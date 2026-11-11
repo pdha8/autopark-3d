@@ -22,7 +22,7 @@ HTML/CSS/JS et suit la vidéo à l'image près.
 | --- | --- |
 | ![Explorateur](docs/images/niveaux.jpg) | ![Tableau de bord](docs/images/dashboard.jpg) |
 
-<img src="docs/images/mobile.jpg" alt="Version téléphone" width="640">
+<img src="docs/images/mobile.jpg" alt="Version téléphone" width="300">
 
 ## Ce que fait le site
 
