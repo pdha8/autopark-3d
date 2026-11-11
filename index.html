@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="fr" data-theme="night">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0e1a" />
+    <meta name="description" content="AutoPark 3D — système de stationnement intelligent : 240 places sur 4 niveaux, lecture de plaque, guidage, réservation en ligne." />
+    <title>AutoPark 3D — Système de stationnement intelligent</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <!-- icônes -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" /></symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2Z" /></symbol>
+        <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3.5 8.5h3l1.6-2.2h7.8l1.6 2.2h3v10h-17z" /><circle cx="12" cy="13.2" r="3.4" /></symbol>
+        <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z" /><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" /></symbol>
+        <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16" /><path d="M8 16v-4M12 16V8M16 16v-6" /></symbol>
+        <symbol id="i-api" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M15 7l5 5-5 5M13.5 5l-3 14" /></symbol>
+        <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" /></symbol>
+        <symbol id="i-car" viewBox="0 0 24 24"><path d="M4.5 16.5v-4l1.7-4.4h11.6l1.7 4.4v4M4.5 12.5h15" /><circle cx="7.8" cy="16.6" r="1.7" /><circle cx="16.2" cy="16.6" r="1.7" /></symbol>
+        <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 2.8 5.5 13.4h5.6l-.9 7.8 8.3-11h-5.9z" /></symbol>
+        <symbol id="i-pmr" viewBox="0 0 24 24"><circle cx="10.2" cy="4.6" r="1.6" /><path d="M10.2 7.8v6h5l2.6 4.6M10.2 10.4h4.4" /><path d="M8 11.6a5 5 0 1 0 6.6 6" /></symbol>
+        <symbol id="i-family" viewBox="0 0 24 24"><circle cx="7" cy="6.2" r="1.9" /><circle cx="17" cy="6.2" r="1.9" /><circle cx="12" cy="11.4" r="1.4" /><path d="M4.2 19v-6.4c0-1.3 1-2.4 2.8-2.4s2.8 1.1 2.8 2.4M14.2 12.6c0-1.3 1-2.4 2.8-2.4s2.8 1.1 2.8 2.4V19M10 19v-3.2c0-1 .8-1.8 2-1.8s2 .8 2 1.8V19" /></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.2V12l3.2 2" /></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" /><path d="m15.6 15.6 4.6 4.6" /></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.6 4.4 4.4L19 7.4" /></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+        <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s6.5-5.6 6.5-11a6.5 6.5 0 1 0-13 0c0 5.400 6.5 11 6.5 11Z" /><circle cx="12" cy="10" r="2.3" /></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 5.8v5.6c0 4.400 3 7.700 7 9.100 4-1.400 7-4.700 7-9.100V5.800z" /></symbol>
+        <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6" /><path d="M4.800 20c.800-3.700 3.700-5.600 7.200-5.600s6.400 1.900 7.200 5.600" /></symbol>
+        <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4.500 12a7.500 7.500 0 1 0 2.300-5.400M4.500 4.500v4.200h4.200" /></symbol>
+        <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5.500" width="18" height="13" rx="2.200" /><path d="M3 10h18M7 15h3.500" /></symbol>
+        <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4.500v15M6 13.500l6 6 6-6" /></symbol>
+      </defs>
+    </svg>
+
+    <!-- chargement -->
+    <div class="loader" id="loader" aria-live="polite">
+      <div class="loader__mark"><span>P</span></div>
+      <div class="loader__name">AutoPark 3D</div>
+      <div class="loader__bar"><i id="loader-bar"></i></div>
+      <div class="loader__pct" id="loader-pct">0 %</div>
+    </div>
+
+    <!-- barre du haut -->
+    <header class="nav" id="nav">
+      <a class="brand" href="#accueil" data-goto="0" aria-label="AutoPark 3D, retour à l'accueil">
+        <span class="brand__mark">P</span>
+        <span class="brand__name">AutoPark<b>3D</b></span>
+      </a>
+      <nav class="nav__links" aria-label="Sections">
+        <a href="#entree" data-goto="1">Entrée</a>
+        <a href="#guidage" data-goto="2">Guidage</a>
+        <a href="#niveaux" data-goto="3">Niveaux</a>
+        <a href="#dashboard" data-goto="4">Dashboard</a>
+        <a href="#api" data-goto="5">API</a>
+      </nav>
+      <div class="nav__tools">
+        <button class="pill pill--live" id="live-btn" type="button" title="Cliquez pour mettre la simulation en pause"><i class="dot"></i><span>Live</span></button>
+        <button class="iconbtn" id="theme-btn" type="button" aria-label="Passer en mode jour">
+          <svg class="ico ico--moon"><use href="#i-moon" /></svg>
+          <svg class="ico ico--sun"><use href="#i-sun" /></svg>
+          <span id="theme-label">Nuit</span>
+        </button>
+        <button class="btn btn--primary btn--sm" type="button" data-action="reserve-best">Réserver</button>
+      </div>
+    </header>
+
+    <!-- repères de section -->
+    <nav class="dots" id="dots" aria-label="Aller à une section"></nav>
+
+    <main class="sections" id="sections">
+      <!-- 0 : accueil -->
+      <section class="sec sec--hero" id="accueil" data-scene="hero">
+        <div class="scene">
+          <div class="scene__videos"></div>
+          <div class="anchors">
+            <button class="tag tag--level" type="button" data-anchor="P3" data-level="3" title="Explorer le niveau P3">P3</button>
+            <button class="tag tag--level" type="button" data-anchor="P2" data-level="2" title="Explorer le niveau P2">P2</button>
+            <button class="tag tag--level" type="button" data-anchor="P1" data-level="1" title="Explorer le niveau P1">P1</button>
+            <button class="tag tag--level" type="button" data-anchor="P0" data-level="0" title="Explorer le niveau P0">P0</button>
+            <button class="chip chip--bay" type="button" id="hero-bay" data-anchor="bay" data-spot="P3-039" title="Voir cette place dans l'explorateur"><i class="dot"></i><b id="hero-bay-id">P3-039</b><span id="hero-bay-state">Occupée</span></button>
+            <div class="toast-anpr" id="hero-anpr" data-anchor="gate">
+              <svg class="ico"><use href="#i-camera" /></svg>
+              <b class="mono" id="hero-anpr-plate">AB-123-CD</b>
+              <span class="ok"><svg class="ico"><use href="#i-check" /></svg></span>
+            </div>
+          </div>
+        </div>
+        <div class="ui">
+          <div class="stats" id="stats" data-reveal data-goto="4" title="Ouvrir le tableau de bord" role="link" tabindex="0">
+            <div class="stat stat--available"><b id="stat-available">89</b><span>Disponible</span></div>
+            <div class="stat stat--occupied"><b id="stat-occupied">108</b><span>Occupé</span></div>
+            <div class="stat stat--reserved"><b id="stat-reserved">43</b><span>Réservé</span></div>
+            <div class="stat stat--total"><b id="stat-total">240</b><span>Total</span></div>
+            <div class="stats__bar"><i class="b-occ" id="bar-occ"></i><i class="b-res" id="bar-res"></i></div>
+          </div>
+          <div class="hero-copy">
+            <p class="kicker" data-reveal>Système de stationnement intelligent</p>
+            <h1 class="title" data-reveal><span>AutoPark</span> <em>3D</em></h1>
+            <p class="lead" data-reveal>240 places sur 4 niveaux, suivies en temps réel. La plaque est lue à l'entrée, la voiture est guidée jusqu'à sa place, et tout se réserve et se règle en ligne.</p>
+            <div class="actions" data-reveal>
+              <button class="btn btn--primary" type="button" data-action="reserve-best"><svg class="ico"><use href="#i-bolt" /></svg>Réserver une place</button>
+              <button class="btn btn--ghost" type="button" id="tour-btn"><svg class="ico"><use href="#i-play" /></svg>Visite guidée</button>
+            </div>
+          </div>
+          <ul class="legend" data-reveal>
+            <li><i style="--c: var(--available)"></i>Disponible</li>
+            <li><i style="--c: var(--occupied)"></i>Occupé</li>
+            <li><i style="--c: var(--reserved)"></i>Réservé</li>
+            <li><i style="--c: var(--ev)"></i>EV</li>
+            <li><i style="--c: var(--pmr)"></i>PMR</li>
+            <li><i style="--c: var(--family)"></i>Famille</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 1 : entrée, lecture de plaque -->
+      <section class="sec sec--gate" id="entree" data-scene="gate">
+        <div class="scene">
+          <div class="scene__videos"></div>
+          <div class="anchors">
+            <svg class="scanline" id="gate-scan" aria-hidden="true"><line x1="0" y1="0" x2="0" y2="0" /></svg>
+            <div class="reticle" id="gate-reticle" data-anchor="plate"><i></i><i></i><i></i><i></i></div>
+            <div class="bubble" id="gate-bubble" data-anchor="anpr">
+              <div class="bubble__title"><svg class="ico"><use href="#i-camera" /></svg>Caméra ANPR — Lecture plaque</div>
+              <div class="bubble__plate mono" id="gate-plate">AB-123-CD</div>
+              <div class="bubble__status" id="gate-status"><svg class="ico"><use href="#i-check" /></svg><span>Plaque reconnue — Accès autorisé</span></div>
+            </div>
+            <div class="chip chip--exit" id="gate-exit" data-anchor="exit"><svg class="ico"><use href="#i-check" /></svg><span>Sortie réglée · <b class="mono">7,00 €</b></span></div>
+          </div>
+        </div>
+        <div class="ui">
+          <div class="copy">
+            <p class="kicker" data-reveal><b>01</b> Entrée</p>
+            <h2 class="h2" data-reveal>La barrière<br />vous reconnaît</h2>
+            <p class="lead" data-reveal>Une caméra ANPR lit la plaque pendant que la voiture s'arrête. Si le véhicule est attendu, la barrière se lève : pas de ticket, pas de guichet.</p>
+            <ul class="facts" data-reveal>
+              <li><b>0,4 s</b><span>pour lire une plaque</span></li>
+              <li><b>24 h/24</b><span>entrée et sortie sans guichet</span></li>
+              <li><b>2 voies</b><span>une caméra par sens</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 : guidage sur le toit -->
+      <section class="sec sec--roof" id="guidage" data-scene="roof">
+        <div class="scene">
+          <div class="scene__videos"></div>
+          <div class="anchors">
+            <svg class="bayline" id="roof-outline" aria-hidden="true"><polygon points="" /></svg>
+            <div class="chip chip--bay chip--big" id="roof-bay" data-anchor="bayTop"><i class="dot"></i><b id="roof-bay-id">P3-039</b><span id="roof-bay-state">Occupée</span></div>
+          </div>
+        </div>
+        <div class="ui">
+          <div class="copy">
+            <p class="kicker" data-reveal><b>02</b> Guidage</p>
+            <h2 class="h2" data-reveal>Guidé jusqu'à<br />la bonne place</h2>
+            <p class="lead" data-reveal>Le système choisit la meilleure place libre selon la distance, le niveau et l'affluence, la réserve, puis trace le chemin au sol. Chaque place affiche son état en direct.</p>
+            <div class="panel panel--smart" data-reveal>
+              <div class="panel__title"><svg class="ico"><use href="#i-spark" /></svg>Suggestions IA — Meilleures places</div>
+              <div class="smart-list" id="smart-list"></div>
+              <div class="predict">
+                <div class="predict__head"><span>Prédiction ML · Dans 1 h</span><b id="pred-value">--%</b></div>
+                <div class="predict__bar"><i id="pred-bar"></i></div>
+                <div class="predict__sub" id="pred-sub">Calcul en cours…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 : explorateur des niveaux -->
+      <section class="sec sec--explore" id="niveaux">
+        <div class="ui ui--wide">
+          <div class="explore__head">
+            <div>
+              <p class="kicker" data-reveal><b>03</b> Niveaux</p>
+              <h2 class="h2 h2--sm" data-reveal>Explorez les 4 niveaux</h2>
+            </div>
+            <div class="mode" id="mode-switch" data-reveal role="tablist" aria-label="Mode d'affichage">
+              <button class="is-active" type="button" data-mode="user" role="tab"><svg class="ico"><use href="#i-user" /></svg>Utilisateur</button>
+              <button type="button" data-mode="admin" role="tab"><svg class="ico"><use href="#i-shield" /></svg>Administrateur</button>
+            </div>
+          </div>
+          <div class="explore">
+            <aside class="explore__side" data-reveal>
+              <div class="levels" id="levels" role="tablist" aria-label="Niveau">
+                <button type="button" data-level="3" class="is-active">P3<small>toit</small></button>
+                <button type="button" data-level="2">P2</button>
+                <button type="button" data-level="1">P1</button>
+                <button type="button" data-level="0">P0<small>EV · PMR</small></button>
+              </div>
+              <div class="panel panel--mini">
+                <label class="panel__title" for="search-input"><svg class="ico"><use href="#i-search" /></svg>Recherche</label>
+                <input class="input" id="search-input" type="text" placeholder="P0-001 ou plaque AB-123-CD" autocomplete="off" spellcheck="false" />
+                <div class="results" id="search-results"></div>
+              </div>
+              <div class="panel panel--mini lvl-stats">
+                <div class="panel__title">Niveau <b id="lvl-name">P3</b></div>
+                <div class="lvl-row"><span><i style="--c: var(--available)"></i>Disponible</span><b id="lvl-available">0</b></div>
+                <div class="lvl-row"><span><i style="--c: var(--occupied)"></i>Occupé</span><b id="lvl-occupied">0</b></div>
+                <div class="lvl-row"><span><i style="--c: var(--reserved)"></i>Réservé</span><b id="lvl-reserved">0</b></div>
+              </div>
+              <div class="admin-only panel panel--mini panel--admin">
+                <div class="panel__title">Administration</div>
+                <div class="admin-cards">
+                  <div><span>Taux occup.</span><b id="adm-rate">--</b></div>
+                  <div><span>CA aujourd'hui</span><b id="adm-revenue">-- €</b></div>
+                  <div><span>Résa. actives</span><b id="adm-active">--</b></div>
+                </div>
+                <div class="admin-actions">
+                  <button class="btn btn--line btn--xs" type="button" id="btn-sim-in"><svg class="ico"><use href="#i-car" /></svg>Simuler arrivée</button>
+                  <button class="btn btn--line btn--xs" type="button" id="btn-sim-out"><svg class="ico"><use href="#i-car" /></svg>Simuler sortie</button>
+                  <button class="btn btn--line btn--xs btn--warn" type="button" id="btn-reset"><svg class="ico"><use href="#i-reset" /></svg>Reset système</button>
+                </div>
+              </div>
+            </aside>
+            <div class="explore__map" data-reveal>
+              <canvas id="level-canvas" width="1600" height="900" aria-label="Plan 3D du niveau sélectionné"></canvas>
+              <div class="tip" id="tip"><b id="tip-id"></b><span id="tip-status"></span><i class="mono" id="tip-plate"></i></div>
+              <p class="explore__hint">Cliquez sur une place disponible pour la réserver · survolez pour voir son état</p>
+            </div>
+            <aside class="explore__detail" data-reveal>
+              <div class="panel spot-card" id="spot-card">
+                <div class="spot-card__empty" id="spot-empty">
+                  <svg class="ico"><use href="#i-pin" /></svg>
+                  <p>Sélectionnez une place sur le plan</p>
+                </div>
+                <div class="spot-card__body" id="spot-body" hidden>
+                  <div class="spot-card__id"><b id="spot-id">P3-001</b><span class="badge" id="spot-status">Disponible</span></div>
+                  <dl>
+                    <div><dt>Niveau</dt><dd id="spot-level">P3</dd></div>
+                    <div><dt>Type</dt><dd id="spot-type">Standard</dd></div>
+                    <div><dt>Plaque</dt><dd class="mono" id="spot-plate">—</dd></div>
+                    <div><dt>Score IA</dt><dd id="spot-score">—</dd></div>
+                  </dl>
+                  <button class="btn btn--primary btn--block" type="button" id="reserve-btn"><svg class="ico"><use href="#i-bolt" /></svg>Réserver cette place</button>
+                  <p class="spot-card__note" id="spot-note"></p>
+                </div>
+              </div>
+              <div class="panel panel--mini">
+                <div class="panel__title"><svg class="ico"><use href="#i-clock" /></svg>Activité en direct</div>
+                <ul class="feed" id="feed"></ul>
+              </div>
+              <button class="btn btn--line btn--block" type="button" id="btn-history"><svg class="ico"><use href="#i-clock" /></svg>Historique</button>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 : tableau de bord -->
+      <section class="sec sec--dash" id="dashboard">
+        <div class="ui ui--wide">
+          <div class="dash__head">
+            <div>
+              <p class="kicker" data-reveal><b>04</b> Dashboard</p>
+              <h2 class="h2 h2--sm" data-reveal>Tableau de bord</h2>
+            </div>
+            <p class="dash__date" data-reveal>Statistiques en temps réel · <span id="dash-date"></span></p>
+          </div>
+          <div class="kpis" data-reveal>
+            <div class="kpi"><b id="kpi-rate">--%</b><span>Taux d'occupation</span></div>
+            <div class="kpi kpi--green"><b id="kpi-avail">--</b><span>Places dispo</span></div>
+            <div class="kpi kpi--yellow"><b id="kpi-revenue">-- €</b><span>CA session</span></div>
+            <div class="kpi kpi--red"><b id="kpi-peak">--</b><span>Heure de pointe</span></div>
+          </div>
+          <div class="charts">
+            <div class="panel chart chart--wide" data-reveal>
+              <div class="panel__title">Profil d'occupation par heure (journée type)</div>
+              <svg id="chart-occupancy" viewBox="0 0 760 220" preserveAspectRatio="none"></svg>
+            </div>
+            <div class="panel chart" data-reveal>
+              <div class="panel__title">Répartition par type de place</div>
+              <div class="types" id="chart-types"></div>
+            </div>
+            <div class="panel chart" data-reveal>
+              <div class="panel__title">Arrivées / Départs (dernières 24 h)</div>
+              <svg id="chart-flow" viewBox="0 0 520 190" preserveAspectRatio="none"></svg>
+            </div>
+            <div class="panel chart" data-reveal>
+              <div class="panel__title">Occupation par niveau</div>
+              <div class="bylevel" id="chart-levels"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 : API, tarifs -->
+      <section class="sec sec--api" id="api">
+        <div class="ui ui--wide">
+          <div class="api__head">
+            <div>
+              <p class="kicker" data-reveal><b>05</b> Intégration</p>
+              <h2 class="h2 h2--sm" data-reveal>API Système</h2>
+            </div>
+            <p class="api__base" data-reveal>AutoPark REST API v1.0 · Base URL : <code>https://api.autopark.local/v1</code></p>
+          </div>
+          <div class="api">
+            <div class="panel api__panel" data-reveal>
+              <div class="tabs" id="api-tabs" role="tablist">
+                <button class="is-active" type="button" data-tab="endpoints">Endpoints</button>
+                <button type="button" data-tab="log">Journal</button>
+                <button type="button" data-tab="webhooks">Webhooks</button>
+                <button type="button" data-tab="keys">Clés API</button>
+                <button type="button" data-tab="export">Export</button>
+              </div>
+              <div class="tabpane is-active" data-pane="endpoints">
+                <div class="endpoints" id="endpoints"></div>
+                <pre class="response" id="api-response">// Cliquez sur « Tester » :
+// la réponse est simulée à partir
+// de l'état du parking.</pre>
+              </div>
+              <div class="tabpane" data-pane="log">
+                <div class="log__head"><span>Requêtes récentes</span><button class="btn btn--line btn--xs" type="button" id="log-clear">Vider</button></div>
+                <div class="log" id="api-log"><p class="log__empty">Aucune requête — testez un endpoint</p></div>
+              </div>
+              <div class="tabpane" data-pane="webhooks">
+                <label class="field"><span>URL de destination</span><input class="input mono" id="webhook-url" type="text" value="https://example.com/parking-webhook" /></label>
+                <p class="field__label">Événements à écouter</p>
+                <div class="checks" id="webhook-events">
+                  <label><input type="checkbox" checked value="reservation.created" />reservation.created</label>
+                  <label><input type="checkbox" checked value="vehicle.arrived" />vehicle.arrived</label>
+                  <label><input type="checkbox" value="vehicle.departed" />vehicle.departed</label>
+                  <label><input type="checkbox" checked value="anpr.scan" />anpr.scan</label>
+                  <label><input type="checkbox" value="parking.full" />parking.full</label>
+                  <label><input type="checkbox" value="payment.completed" />payment.completed</label>
+                </div>
+                <button class="btn btn--primary btn--sm" type="button" id="webhook-test">Envoyer un événement test</button>
+                <pre class="response response--sm" id="webhook-result" hidden></pre>
+              </div>
+              <div class="tabpane" data-pane="keys">
+                <p class="field__label">Clé d'API active (lecture / écriture)</p>
+                <div class="key"><code id="api-key">ap_live_••••••••••••••••••••••</code><button class="btn btn--line btn--xs" type="button" id="key-reveal">Révéler</button></div>
+                <p class="field__label">Clé lecture seule</p>
+                <div class="key"><code id="api-key-read">ap_read_7f3a9b2c1d8e4f6a</code><button class="btn btn--line btn--xs" type="button" id="key-copy">Copier</button></div>
+                <div class="usage"><span>Usage ce mois</span><b class="mono" id="api-usage">0 requête</b></div>
+                <button class="btn btn--line btn--sm" type="button" id="key-regen">Régénérer la clé</button>
+              </div>
+              <div class="tabpane" data-pane="export">
+                <p class="lead lead--sm">Exportez les données du parking dans différents formats.</p>
+                <div class="exports">
+                  <button type="button" data-export="spots"><b>JSON</b><code>spots.json</code><span>Toutes les places avec statut actuel, plaque, type</span></button>
+                  <button type="button" data-export="history"><b>JSON</b><code>reservations.json</code><span>Historique complet des réservations de session</span></button>
+                  <button type="button" data-export="stats"><b>JSON</b><code>stats.json</code><span>Statistiques globales et par niveau</span></button>
+                  <button type="button" data-export="csv"><b>CSV</b><code>reservations.csv</code><span>Historique des réservations au format tableur</span></button>
+                </div>
+              </div>
+            </div>
+            <div class="api__side">
+              <div class="panel price" data-reveal>
+                <div class="panel__title">Tarifs</div>
+                <div class="price__main"><b>3,50 €</b><span>par heure</span></div>
+                <ul class="price__list">
+                  <li><span>2 h</span><b>7,00 €</b></li>
+                  <li><span>8 h</span><b>28,00 €</b></li>
+                  <li><span>24 h</span><b>84,00 €</b></li>
+                  <li><span>Dépassement</span><b>+ 50 %</b></li>
+                </ul>
+                <button class="btn btn--primary btn--block" type="button" data-action="reserve-best"><svg class="ico"><use href="#i-bolt" /></svg>Réserver une place</button>
+              </div>
+              <div class="panel note" data-reveal>
+                <div class="panel__title">Démonstration</div>
+                <p>Rien n'est envoyé : l'API, les paiements et les réservations sont simulés et restent dans ce navigateur.</p>
+                <div class="storage" id="storage"><i class="dot"></i><span id="storage-label">LocalStorage actif</span></div>
+              </div>
+              <p class="credit" data-reveal>Maquette 3D rendue dans Blender (Cycles), lue en vidéo 60 images/s.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- réservation en cours -->
+    <div class="resbar" id="resbar" hidden>
+      <div><span>Votre réservation</span><b id="ar-id">--</b></div>
+      <div><span>Plaque</span><b class="mono" id="ar-plate">--</b></div>
+      <div><span>Temps restant</span><b class="mono" id="ar-timer">--:--</b></div>
+      <button class="btn btn--line btn--xs" type="button" id="ar-guide"><svg class="ico"><use href="#i-pin" /></svg>Voir</button>
+      <button class="btn btn--danger btn--xs" type="button" id="ar-end">Libérer &amp; payer</button>
+    </div>
+
+    <!-- visite guidée -->
+    <div class="tourbar" id="tourbar" hidden>
+      <svg class="ico"><use href="#i-play" /></svg>
+      <span id="tour-caption">Visite guidée</span>
+      <div class="tourbar__bar"><i id="tour-progress"></i></div>
+      <button class="btn btn--line btn--xs" type="button" id="tour-stop">Arrêter</button>
+    </div>
+
+    <!-- bandeau d'alerte et notifications -->
+    <div class="alert" id="alert" role="status"></div>
+    <div class="notif" id="notif" role="status"></div>
+
+    <!-- fenêtres -->
+    <div class="modal" id="modal-reserve" role="dialog" aria-modal="true" aria-labelledby="res-title" hidden>
+      <div class="modal__box">
+        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico"><use href="#i-x" /></svg></button>
+        <h3 id="res-title">Réserver une place</h3>
+        <p class="modal__sub" id="res-spot">P0-000</p>
+        <label class="field"><span>Plaque d'immatriculation</span><input class="input input--plate mono" id="res-plate" type="text" maxlength="12" placeholder="AB-123-CD" autocomplete="off" spellcheck="false" /></label>
+        <p class="field__label">Durée du stationnement</p>
+        <div class="durations" id="durations">
+          <button type="button" data-h="1">1 h</button>
+          <button type="button" data-h="2" class="is-active">2 h</button>
+          <button type="button" data-h="4">4 h</button>
+          <button type="button" data-h="8">8 h</button>
+          <button type="button" data-h="24">24 h</button>
+        </div>
+        <div class="rows">
+          <div><span>Tarif horaire</span><b class="mono">3,50 €</b></div>
+          <div><span>Durée</span><b class="mono" id="res-duration">2 h</b></div>
+          <div class="rows__total"><span>Total</span><b class="mono" id="res-total">7,00 €</b></div>
+        </div>
+        <button class="btn btn--primary btn--block" type="button" id="res-confirm"><svg class="ico"><use href="#i-card" /></svg>Confirmer &amp; payer</button>
+        <button class="btn btn--line btn--block" type="button" data-close>Annuler</button>
+        <p class="modal__note">Démonstration : aucun paiement réel, rien n'est envoyé.</p>
+      </div>
+    </div>
+
+    <div class="modal" id="modal-receipt" role="dialog" aria-modal="true" aria-labelledby="rec-title" hidden>
+      <div class="modal__box">
+        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico"><use href="#i-x" /></svg></button>
+        <div class="modal__ok"><svg class="ico"><use href="#i-check" /></svg></div>
+        <h3 id="rec-title" class="center">Paiement confirmé</h3>
+        <p class="modal__sub center">Reçu #<span id="rec-id">--</span></p>
+        <div class="rows">
+          <div><span>Place</span><b class="mono" id="rec-spot">--</b></div>
+          <div><span>Plaque</span><b class="mono" id="rec-plate">--</b></div>
+          <div><span>Début</span><b class="mono" id="rec-start">--</b></div>
+          <div><span>Fin prévue</span><b class="mono" id="rec-end">--</b></div>
+          <div><span>Durée</span><b class="mono" id="rec-dur">--</b></div>
+          <div class="rows__total"><span>Montant payé</span><b class="mono" id="rec-total">--</b></div>
+        </div>
+        <button class="btn btn--primary btn--block" type="button" id="rec-navigate"><svg class="ico"><use href="#i-pin" /></svg>Me guider vers ma place</button>
+        <button class="btn btn--line btn--block" type="button" data-close>Fermer</button>
+      </div>
+    </div>
+
+    <div class="modal" id="modal-history" role="dialog" aria-modal="true" aria-labelledby="his-title" hidden>
+      <div class="modal__box modal__box--wide">
+        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico"><use href="#i-x" /></svg></button>
+        <h3 id="his-title">Historique des réservations</h3>
+        <p class="modal__sub">Session en cours + passées</p>
+        <div class="history" id="history-list"></div>
+      </div>
+    </div>
+
+    <div class="modal" id="modal-exit" role="dialog" aria-modal="true" aria-labelledby="ex-title" hidden>
+      <div class="modal__box">
+        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico"><use href="#i-x" /></svg></button>
+        <h3 id="ex-title">Fin de stationnement</h3>
+        <p class="modal__sub">Merci de votre visite</p>
+        <div class="rows">
+          <div><span>Place</span><b class="mono" id="ex-spot">--</b></div>
+          <div><span>Plaque</span><b class="mono" id="ex-plate">--</b></div>
+          <div><span>Durée réelle</span><b class="mono" id="ex-dur">--</b></div>
+          <div><span>Dépassement</span><b class="mono" id="ex-over">--</b></div>
+          <div class="rows__total"><span>À régler</span><b class="mono" id="ex-total">--</b></div>
+        </div>
+        <button class="btn btn--primary btn--block" type="button" id="ex-pay"><svg class="ico"><use href="#i-card" /></svg>Payer &amp; libérer</button>
+        <p class="modal__note">Démonstration : aucun paiement réel.</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

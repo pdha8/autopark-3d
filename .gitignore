@@ -1,0 +1,6 @@
+node_modules
+dist
+blender/work
+*.blend1
+graphify-out/
+.DS_Store

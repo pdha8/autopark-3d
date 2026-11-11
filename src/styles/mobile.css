@@ -1,0 +1,233 @@
+/* AutoPark 3D — téléphone (écran en hauteur). 1 u = 1/430 de la largeur de l'écran.
+   La scène 3D est recadrée sur son sujet dans la moitié haute ; le texte passe en bas. */
+
+body.is-mobile .nav {
+  left: 0;
+  width: 100%;
+  height: calc(var(--u) * 60);
+  padding: 0 calc(var(--u) * 16);
+  transform: none;
+  gap: calc(var(--u) * 10);
+  background: linear-gradient(var(--bg), transparent);
+}
+
+body.is-mobile .nav__links,
+body.is-mobile .dots,
+body.is-mobile #live-btn,
+body.is-mobile #theme-label {
+  display: none;
+}
+
+body.is-mobile .nav__tools {
+  margin-left: auto;
+}
+
+body.is-mobile .ui {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+}
+
+/* voile en bas de l'écran (au lieu du voile latéral) */
+body.is-mobile .sec--gate .scene::after,
+body.is-mobile .sec--roof .scene::after {
+  display: none;
+}
+
+body.is-mobile .sec[data-scene]::after {
+  content: '';
+  position: absolute;
+  inset: 44% 0 0 0;
+  background: linear-gradient(to bottom, transparent, var(--bg) 34%);
+  pointer-events: none;
+}
+
+body.is-mobile .sec[data-scene] .ui {
+  z-index: 2;
+}
+
+/* accueil */
+body.is-mobile .stats {
+  left: calc(var(--u) * 16);
+  right: calc(var(--u) * 16);
+  top: calc(var(--u) * 66);
+  grid-template-columns: repeat(4, 1fr);
+  column-gap: calc(var(--u) * 8);
+  padding: calc(var(--u) * 10) calc(var(--u) * 14) calc(var(--u) * 12);
+}
+
+body.is-mobile .stat b {
+  font-size: calc(var(--u) * 24);
+}
+
+body.is-mobile .stat span {
+  font-size: calc(var(--u) * 8);
+  letter-spacing: 0.12em;
+}
+
+body.is-mobile .hero-copy,
+body.is-mobile .copy {
+  left: calc(var(--u) * 20);
+  right: calc(var(--u) * 20);
+  top: auto;
+  bottom: calc(var(--u) * 34);
+  width: auto;
+  transform: none;
+}
+
+body.is-mobile .hero-copy .title {
+  font-size: calc(var(--u) * 66);
+}
+
+body.is-mobile .hero-copy .lead,
+body.is-mobile .copy .lead {
+  max-width: none;
+  font-size: calc(var(--u) * 14);
+}
+
+body.is-mobile .legend {
+  display: none;
+}
+
+body.is-mobile .actions .btn {
+  flex: 1;
+  padding: 0 calc(var(--u) * 10);
+}
+
+body.is-mobile .copy .h2 {
+  margin: calc(var(--u) * 10) 0 calc(var(--u) * 12);
+  font-size: calc(var(--u) * 44);
+}
+
+body.is-mobile .facts {
+  gap: calc(var(--u) * 16);
+  margin-top: calc(var(--u) * 16);
+  padding-top: calc(var(--u) * 14);
+}
+
+body.is-mobile .facts b {
+  font-size: calc(var(--u) * 28);
+}
+
+body.is-mobile .panel--smart {
+  width: auto;
+  margin-top: calc(var(--u) * 14);
+}
+
+body.is-mobile .panel--smart .predict,
+body.is-mobile .smart-spot:nth-child(n + 3) {
+  display: none;
+}
+
+/* sections de contenu : défilement interne */
+body.is-mobile .ui--wide {
+  padding: calc(var(--u) * 72) calc(var(--u) * 16) calc(var(--u) * 28);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.is-mobile .explore__head,
+body.is-mobile .dash__head,
+body.is-mobile .api__head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--u) * 10);
+}
+
+body.is-mobile .explore,
+body.is-mobile .api {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+}
+
+body.is-mobile .explore__map {
+  order: -1;
+}
+
+body.is-mobile .levels {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+body.is-mobile .explore__hint,
+body.is-mobile .lvl-stats {
+  display: none;
+}
+
+body.is-mobile .spot-card {
+  min-height: 0;
+}
+
+body.is-mobile .spot-card__empty {
+  height: calc(var(--u) * 90);
+}
+
+body.is-mobile .kpis {
+  grid-template-columns: 1fr 1fr;
+}
+
+body.is-mobile .charts {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+}
+
+body.is-mobile .chart {
+  min-height: calc(var(--u) * 210);
+}
+
+body.is-mobile .tabs {
+  flex-wrap: wrap;
+}
+
+body.is-mobile .tabpane[data-pane='endpoints'].is-active {
+  display: flex;
+  flex-direction: column;
+}
+
+body.is-mobile .response {
+  max-height: calc(var(--u) * 220);
+}
+
+body.is-mobile .exports,
+body.is-mobile .checks {
+  grid-template-columns: 1fr;
+}
+
+body.is-mobile .modal__box,
+body.is-mobile .modal__box--wide {
+  width: calc(100vw - var(--u) * 32);
+  padding: calc(var(--u) * 22);
+}
+
+body.is-mobile .resbar {
+  width: calc(100vw - var(--u) * 24);
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 10) calc(var(--u) * 16);
+  bottom: calc(var(--u) * 12);
+}
+
+body.is-mobile .tourbar {
+  width: calc(100vw - var(--u) * 24);
+}
+
+body.is-mobile .tourbar__bar {
+  flex: 1;
+  width: auto;
+}
+
+body.is-mobile .notif,
+body.is-mobile .alert {
+  max-width: calc(100vw - var(--u) * 24);
+  white-space: normal;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader__mark,
+  .pill--live .dot {
+    animation: none;
+  }
+}
