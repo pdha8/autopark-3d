@@ -2,11 +2,17 @@
 Plan d'occupation du parking (240 places) : type de place, état initial, voiture.
 Déterministe (graine fixe) : la scène Blender et le site partent du même état
 (89 disponibles, 108 occupées, 43 réservées, comme le prototype).
+
+Les places utilisées par la flotte en circulation (fleet.py) n'ont pas de voiture
+fixe : « dyn » y vaut le nom de la chaîne. Celles qui doivent rester dégagées
+(virages, traversée) sont vidées ; une place cachée du même niveau est occupée à
+leur place, pour garder les mêmes totaux.
 """
 
 import random
 
 import config as C
+import fleet as F
 
 # niveau -> (occupées, réservées)
 TARGETS = {0: (28, 9), 1: (26, 11), 2: (24, 11), 3: (30, 12)}
@@ -80,9 +86,53 @@ def make(seed=11):
                     "paint": -1 if hero else rng.choice(paints),
                     "plate": "AB-123-CD" if hero else _plate(rng),
                     "hero": hero,
+                    "dyn": None,
                 }
             )
+    _reserve_for_traffic(spots)
     return spots
+
+
+def _reserve_for_traffic(spots):
+    by = {(s["level"], s["row"], s["col"]): s for s in spots}
+    dyn, clear = F.bays(), F.clear_bays()
+    rng = random.Random(23)
+    for s in spots:  # gabarits supplémentaires (tirage indépendant du reste)
+        if rng.random() < C.EXTRA_SHARE and not s["hero"]:
+            s["style"] = rng.choice(C.EXTRA_STYLES)
+    for key in sorted(set(dyn) | clear):
+        s = by[key]
+        if key in dyn:
+            s["dyn"] = dyn[key]
+        if s["status"] != "occupied" or s["hero"]:
+            continue
+        # la voiture fixe déménage vers une place libre du même niveau, loin des façades
+        lv = key[0]
+        pool = [c for c in spots if c["level"] == lv and c["status"] == "available" and (c["level"], c["row"], c["col"]) not in dyn and (c["level"], c["row"], c["col"]) not in clear and (lv == C.HERO_LEVEL or c["row"] in (1, 2))]
+        pool = pool or [c for c in spots if c["level"] == lv and c["status"] == "available" and (c["level"], c["row"], c["col"]) not in dyn and (c["level"], c["row"], c["col"]) not in clear]
+        t = rng.choice(pool)
+        t["status"], s["status"] = "occupied", "available"
+    # une place de la flotte est libre (verte) quand le véhicule n'y est pas : sa réservation déménage
+    for key in sorted(dyn):
+        s = by[key]
+        if s["status"] == "reserved" and not s["hero"]:
+            lv = key[0]
+            pool = [c for c in spots if c["level"] == lv and c["status"] == "available" and (lv, c["row"], c["col"]) not in dyn and (lv, c["row"], c["col"]) not in clear]
+            rng.choice(pool)["status"] = "reserved"
+            s["status"] = "available"
+
+
+def parked_cars(spots):
+    """Voitures garées fixes : position (centre), cap du nez en degrés, altitude."""
+    rng = random.Random(5)
+    out = []
+    for s in spots:
+        dx, dy, da = rng.uniform(-0.13, 0.13), rng.uniform(-0.22, 0.18), rng.uniform(-2.2, 2.2)
+        if s["status"] != "occupied" or s["hero"] or s["dyn"]:
+            continue
+        z = s["level"] * C.LEVEL_H + (0.04 if s["level"] == 0 else 0.025)
+        out.append({"id": s["id"], "level": s["level"], "x": s["x"] + dx, "y": s["y"] + dy, "z": z, "heading": s["heading"] + da, "style": s["style"], "paint": s["paint"]})
+    return out
 
 
 def counts(spots):

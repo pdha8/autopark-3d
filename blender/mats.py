@@ -142,6 +142,7 @@ class Mats:
         self.pbr("tail_off", "#b3262b", rough=0.25, coat=0.8)
         self.pbr("lamp_on", "#fbfcff", rough=0.12, coat=1.0, emit="#fff1d6", strength=self.lamp)
         self.pbr("tail_on", "#d42a2f", rough=0.25, coat=0.8, emit="#ff2a2a", strength=self.tail)
+        self.glow("taxi_sign", "#ffe7a0", 5.0 if n else 1.1, base="#fff3cf")
         self.paint("paint_hero", C.ACCENT)
         for i, (name, col, _w) in enumerate(C.PAINTS):
             self.paint(f"paint_{i}", col)

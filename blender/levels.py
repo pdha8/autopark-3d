@@ -132,10 +132,8 @@ def build_level(level, night, spots):
         root.location = (s["x"] + dx, s["y"] + dy, 0.03)
         root.rotation_euler = (0, 0, math.radians(s["heading"] + 90.0 + da))
         root.scale = (C.CAR_SCALE,) * 3
-        paint = M["paint_hero"] if s["hero"] else M[f"paint_{s['paint']}"]
-        garage._parts(s["style"], cars_coll, {garage.base_paint: paint}, parent=root)
-        garage._wheels(s["style"], cars_coll, parent=root)
-        garage._plates(s["style"], cars_coll, parent=root)
+        car = garage.static_car(f"carrosserie_{s['id']}", s["style"], "hero" if s["hero"] else s["paint"], cars_coll)
+        car.parent = root
         cars.append((s, root))
 
     # caméra orthographique, depuis le sud

@@ -1,17 +1,18 @@
 """
-Voitures et éléments animés d'AutoPark 3D :
-  - bibliothèque de voitures (carrosseries de cars.py, roues, plaques), instanciée
+Véhicules et éléments animés d'AutoPark 3D :
+  - bibliothèque de véhicules (carrosseries de cars.py, roues, plaques), instanciée
     pour les voitures garées ;
-  - 7 voitures « héros » identiques qui se relaient sur la route (route.py) ;
+  - la flotte en circulation (fleet.py), cadencée par traffic.py : chaque chaîne
+    rejoue son trajet toutes les LOOP secondes, avec autant de véhicules identiques
+    qu'il en faut pour couvrir sa durée ;
   - lisses des barrières, flash de la caméra ANPR, cabine d'ascenseur, boucles
-    lumineuses de la place réservée, chevrons de guidage.
+    lumineuses des places utilisées par la flotte, chevrons de guidage.
 Toutes les poses sont des fonctions du temps dans la boucle : la dernière image
 rejoint exactement la première.
 """
 
 import json
 import math
-import random
 
 import bmesh
 import bpy
@@ -21,20 +22,18 @@ from mathutils import Matrix, Vector
 import anim
 import cars
 import config as C
+import fleet as F
 import geo
-import route as R
+import layout
+import traffic
 import world
 from geo import Geo
 from mats import hex_lin
 
-Y_HIDE_IN = -88.0  # au sud : voiture qui arrive, phares compris, hors de tous les cadres
-Y_HIDE_OUT = -76.0
 FR = np.arange(-1, C.FRAMES + 2, dtype=float)  # images clés (une de plus de chaque côté : flou de mouvement)
 TIME = FR / C.FPS
-
-
-def get_route():
-    return R.build(Y_HIDE_IN, Y_HIDE_OUT)
+PLATE_FRAME = C.FRAMES + 60  # image hors boucle où tout est au repos : c'est elle que montre le fond
+HIDE_Z = -400.0  # un véhicule hors trajet attend sous le sol du studio
 
 
 # ------------------------------------------------------------------ roue
@@ -86,27 +85,68 @@ def wheel_mesh(M):
     return me
 
 
-# ------------------------------------------------------------------ bibliothèque de voitures
+# ------------------------------------------------------------------ bibliothèque de véhicules
+# Un véhicule compte une vingtaine de pièces. Pour que la scène reste légère à mettre à jour
+# (chaque rendu de zone resynchronise tous les objets), elles sont fusionnées : un maillage par
+# gabarit, partagé par tous les véhicules ; seuls les matériaux (peinture, feux) changent.
+def _join(objs, name, coll):
+    """Fusionne des objets maillés (repère du véhicule) en un seul objet posé à l'origine."""
+    sc = bpy.context.scene.collection
+    target = bpy.data.objects.new(name, bpy.data.meshes.new(name))
+    sc.objects.link(target)
+    with bpy.context.temp_override(active_object=target, object=target, selected_objects=objs + [target], selected_editable_objects=objs + [target]):
+        bpy.ops.object.join()
+    geo.move_to(target, coll)
+    return target
+
+
+def _as_mesh(ob):
+    """Objet texte -> objet maillage équivalent (même place, mêmes matériaux)."""
+    me = bpy.data.meshes.new_from_object(ob.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    new = bpy.data.objects.new(ob.name, me)
+    bpy.context.scene.collection.objects.link(new)
+    new.matrix_world = ob.matrix_world.copy()
+    bpy.data.objects.remove(ob, do_unlink=True)
+    return new
+
+
+def _mesh_copy(me, swap, name):
+    """Copie d'un maillage avec des matériaux remplacés. Les matériaux restent portés par le
+    maillage : deux objets qui partagent un maillage ont alors exactement les mêmes matériaux,
+    et Cycles les traite comme de vraies instances (aucune resynchronisation entre deux rendus)."""
+    new = me.copy()
+    new.name = name
+    for i, m in enumerate(new.materials):
+        if m in swap:
+            new.materials[i] = swap[m]
+    return new
+
+
 class Garage:
     def __init__(self, M, night):
         self.M = M
         self.night = night
         self.masters = geo.collection("voitures_modeles", exclude=True)
-        self.lib = geo.collection("voitures_bibliotheque", exclude=True)
         self.wheel = wheel_mesh(M)
         self.plate_me, self.plate_band_me, self.plate_ink_me = self._plate_meshes()
         self.font = world._font(world.FONT_DIN)
-        self.styles = {}
-        self.variants = {}
+        self.styles = {}  # gabarit -> carrosserie fusionnée, emplacement des plaques, roues
+        self.statics = {}  # gabarit -> maillage complet d'une voiture garée
+        self.painted = {}  # (gabarit, peinture) -> ce maillage, repeint
+        self.plates = {}  # (gabarit, numéro) -> maillage des deux plaques
         self.base_paint = M.paint("paint_master", "#ffffff")
-        for style in C.STYLES:
-            mats = {"paint": self.base_paint, "roof": M["car_roof"], "glass": M["car_glass"], "chrome": M["chrome"], "dark": M["car_dark"], "lamp": M["lamp_off"], "tail": M["tail_off"]}
+
+    def style(self, style):
+        """Modèle d'un gabarit (construit à la première demande)."""
+        if style not in self.styles:
+            M = self.M
+            mats = {"paint": self.base_paint, "roof": M["car_roof"], "glass": M["car_glass"], "chrome": M["chrome"], "dark": M["car_dark"], "lamp": M["lamp_off"], "tail": M["tail_off"], "sign": M["taxi_sign"]}
             objs, bvh = cars.build(style, mats, f"m_{style}")
-            parts = [(o, o.matrix_world.copy()) for o in objs]
-            for o in objs:
-                geo.move_to(o, self.masters)
             plates = [cars.plate_spot(style, bvh, rear) for rear in (False, True)]
-            self.styles[style] = {"parts": parts, "plates": plates, "wheels": cars.STYLES[style]["wheels"]}
+            spec = cars.STYLES[style]
+            body = _join(objs, f"m_{style}", self.masters)
+            self.styles[style] = {"body": body.data, "plates": plates, "wheels": spec["wheels"], "wheel_scale": spec.get("wheel_scale", 1.0)}
+        return self.styles[style]
 
     def _plate_meshes(self):
         out = []
@@ -123,58 +163,42 @@ class Garage:
         out[2].materials.append(self.M["mark_dim"])
         return out
 
-    def _parts(self, style, coll, swap, parent=None):
-        """Copies des pièces d'un modèle (maillages partagés) avec matériaux remplacés."""
-        made = []
-        for o, mw in self.styles[style]["parts"]:
-            d = o.copy()
-            coll.objects.link(d)
-            for slot in d.material_slots:
-                if slot.material in swap:
-                    new = swap[slot.material]
-                    slot.link = "OBJECT"
-                    slot.material = new
-            if parent is not None:
-                d.parent = parent
-                d.matrix_parent_inverse = Matrix.Identity(4)
-                d.matrix_basis = mw
-            else:
-                d.matrix_world = mw
-            made.append(d)
-        return made
-
-    def _plates(self, style, coll, parent=None, text=None):
-        for i, (loc, nor) in enumerate(self.styles[style]["plates"]):
+    def _plate_objs(self, style, text=None):
+        """Objets provisoires des deux plaques (support, bande bleue, numéro), dans le repère du véhicule."""
+        sc = bpy.context.scene.collection
+        out = []
+        for loc, nor in self.style(style)["plates"]:
             if loc is None:
                 continue
-            holder = bpy.data.objects.new(f"plaque_{style}_{i}", self.plate_me)
-            coll.objects.link(holder)
+            holder = bpy.data.objects.new("plaque", self.plate_me)
+            sc.objects.link(holder)
             cars._orient(holder, loc + nor * 0.003, nor)
             mw = holder.matrix_world.copy()
-            if parent is not None:
-                holder.parent = parent
-                holder.matrix_parent_inverse = Matrix.Identity(4)
-                holder.matrix_basis = mw
-            band = bpy.data.objects.new(f"plaque_bande_{style}_{i}", self.plate_band_me)
-            coll.objects.link(band)
-            band.parent = holder
+            band = bpy.data.objects.new("plaque_bande", self.plate_band_me)
+            sc.objects.link(band)
+            band.matrix_world = mw
+            out += [holder, band]
             if text:
-                t = geo.text(f"plaque_texte_{style}_{i}", text, 0.036, coll, self.M["plate_text"], font=self.font, extrude=0.0006, spacing=1.05)
-                t.parent = holder
-                t.location = (0.012, -0.001, 0.0066)
+                t = geo.text("plaque_texte", text, 0.036, sc, self.M["plate_text"], font=self.font, extrude=0.0006, spacing=1.05)
+                t.matrix_world = mw @ Matrix.Translation((0.012, -0.001, 0.0066))
+                out.append(_as_mesh(t))
             else:
-                ink = bpy.data.objects.new(f"plaque_encre_{style}_{i}", self.plate_ink_me)
-                coll.objects.link(ink)
-                ink.parent = holder
+                ink = bpy.data.objects.new("plaque_encre", self.plate_ink_me)
+                sc.objects.link(ink)
+                ink.matrix_world = mw
+                out.append(ink)
+        return out
 
     def _wheels(self, style, coll, parent=None):
-        wy, track = self.styles[style]["wheels"]
+        wy, track = self.style(style)["wheels"]
+        ws = self.style(style)["wheel_scale"]
         made = {}
         for fx, sx in (("G", 1), ("D", -1)):
             for fy, sy in (("av", -1), ("ar", 1)):
                 w = bpy.data.objects.new(f"roue_{fy}{fx}", self.wheel)
                 coll.objects.link(w)
-                w.location = (sx * track, sy * wy, 0.145)
+                w.location = (sx * track, sy * wy, 0.145 * ws)
+                w.scale = (ws, ws, ws)
                 w.rotation_mode = "XYZ"
                 w.rotation_euler = (0, 0, 0 if sx > 0 else math.pi)
                 if parent is not None:
@@ -182,35 +206,55 @@ class Garage:
                 made[fy + fx] = (w, sx)
         return made
 
-    def variant(self, style, paint):
-        """Collection instanciable d'une voiture garée (modèle + peinture)."""
-        key = (style, paint)
-        if key not in self.variants:
-            coll = bpy.data.collections.new(f"v_{style}_{paint}")
-            self.lib.children.link(coll)
-            self._parts(style, coll, {self.base_paint: self.M[f"paint_{paint}"]})
-            self._wheels(style, coll)
-            self._plates(style, coll)
-            self.variants[key] = coll
-        return self.variants[key]
+    def paint_mat(self, paint):
+        """Peinture : « hero », indice dans config.PAINTS, ou couleur « #rrggbb »."""
+        if paint == "hero":
+            return self.M["paint_hero"]
+        if isinstance(paint, str):
+            name = f"paint_{paint.lstrip('#')}"
+            return self.M.m.get(name) or self.M.paint(name, paint)
+        return self.M[f"paint_{paint}"]
 
-    def hero(self, coll, name):
-        """Voiture animée : racine (pose sur la route) > caisse (roulis, tangage) + 4 roues."""
+    def static_car(self, name, style, paint, coll):
+        """Voiture garée : un seul objet (carrosserie, roues et plaques d'un seul tenant)."""
+        if style not in self.statics:
+            sc = bpy.context.scene.collection
+            body = bpy.data.objects.new("carrosserie", self.style(style)["body"].copy())
+            sc.objects.link(body)
+            wheels = [w for w, _sx in self._wheels(style, sc).values()]
+            self.statics[style] = _join([body] + wheels + self._plate_objs(style), f"s_{style}", self.masters).data
+        key = (style, paint)
+        if key not in self.painted:
+            self.painted[key] = _mesh_copy(self.statics[style], {self.base_paint: self.paint_mat(paint)}, f"s_{style}_{paint}")
+        ob = bpy.data.objects.new(name, self.painted[key])
+        coll.objects.link(ob)
+        return ob
+
+    def car(self, coll, name, style, paint, plate):
+        """Véhicule animé : racine (pose sur la route) > caisse (roulis, tangage) + 4 roues."""
         M = self.M
         root = geo.empty(name, coll)
         root.rotation_mode = "YXZ"
         root.scale = (C.CAR_SCALE,) * 3
         body = geo.empty(name + "_caisse", coll, parent=root)
         body.rotation_mode = "YXZ"
-        lamp = M["lamp_on"].copy()  # un matériau de phare par voiture : s'éteint quand elle est garée
+        lamp = M["lamp_on"].copy()  # phares et feux propres à chaque véhicule : ils s'éteignent, freinent
         lamp.name = f"{name}_phare"
-        swap = {self.base_paint: M["paint_hero"], M["lamp_off"]: lamp, M["tail_off"]: M["tail_on"]}
-        self._parts("mini", coll, swap, parent=body)
-        self._plates("mini", coll, parent=body, text="AB-123-CD")
-        wheels = self._wheels("mini", coll, parent=root)
-        lights = {"lamp": lamp, "spots": [], "beam": None}
+        tail = M["tail_on"].copy()
+        tail.name = f"{name}_feu"
+        swap = {self.base_paint: self.paint_mat(paint), M["lamp_off"]: lamp, M["tail_off"]: tail}
+        shell = bpy.data.objects.new(name + "_carrosserie", _mesh_copy(self.style(style)["body"], swap, name + "_carrosserie"))
+        coll.objects.link(shell)
+        shell.parent = body
+        if (style, plate) not in self.plates:
+            self.plates[(style, plate)] = _join(self._plate_objs(style, plate), f"plaques_{style}_{plate}", self.masters).data
+        pl = bpy.data.objects.new(name + "_plaques", self.plates[(style, plate)])
+        coll.objects.link(pl)
+        pl.parent = body
+        wheels = self._wheels(style, coll, parent=root)
+        lights = {"lamp": lamp, "tail": tail, "spots": [], "beam": None}
         if self.night:
-            lights["spots"], lights["beam"] = _headlights(coll, body, name)
+            lights["spots"], lights["beam"] = _headlights(coll, body, name, style)
         return root, body, wheels, lights
 
 
@@ -273,13 +317,23 @@ BEAM_REACH = 12.0  # portée de l'éclairage des phares (m) : au-delà, strictem
 def set_beam_reach(view):
     """Vues rapprochées : faisceaux plus courts (zones de rendu bien plus petites à l'écran)."""
     global BEAM_REACH
-    BEAM_REACH = 12.0 if view == "hero" else 8.0
+    BEAM_REACH = 10.0 if view == "hero" else 8.0
 
 
-def headlights_on(ev, tau):
-    """Phares allumés (1) ou éteints (0) : ils s'éteignent une fois la voiture garée."""
+def lights_on(trip, tau):
+    """Phares allumés (1) ou éteints (0) : ils s'éteignent quand le véhicule est garé, et en
+    douceur au début et à la fin du trajet (le véhicule est alors hors de vue)."""
     tau = np.asarray(tau, dtype=float)
-    return 1.0 - (_S((tau - ev["parked"] - 0.7) / 0.4) - _S((tau - ev["leave"] + 0.9) / 0.4))
+    on = _S(tau / 0.5) * _S((trip.T - tau) / 0.5)
+    for a, b in trip.parked:
+        on = on * (1.0 - (_S((tau - a - 0.7) / 0.4) - _S((tau - b + 0.9) / 0.4)))
+    return on
+
+
+def braking(st):
+    """Feux stop (0 à 1) : en décélération, ou à l'arrêt dans la circulation."""
+    v, a = st["v"], st["a"]
+    return np.maximum(np.clip((-a * np.sign(v) - 0.25) / 0.8, 0.0, 1.0), (np.abs(v) < 0.05).astype(float))
 
 
 def _limited_falloff(light, d0, d1):
@@ -298,9 +352,26 @@ def _limited_falloff(light, d0, d1):
     nt.links.new(ramp.outputs["Result"], em.inputs["Strength"])
 
 
-def _headlights(coll, body, name):
+def _cone_mesh():
+    me = bpy.data.meshes.get("faisceau_cone")
+    if me:
+        return me
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=False, segments=40, radius1=0.62, radius2=0.0, depth=2.0)
+    for v in bm.verts:
+        v.co.z -= 1.0
+    me = bpy.data.meshes.new("faisceau_cone")
+    bm.to_mesh(me)
+    bm.free()
+    for poly in me.polygons:
+        poly.use_smooth = True
+    me.materials.append(_beam_material())
+    return me
+
+
+def _headlights(coll, body, name, style):
     """Renvoie (projecteurs, matériau des faisceaux) pour l'animation allumé / éteint."""
-    L = cars.STYLES["mini"]["lamps"]
+    L = cars.STYLES[style]["lamps"]
     beam = _beam_material().copy()
     beam.name = f"{name}_faisceau"
     spots = []
@@ -318,15 +389,8 @@ def _headlights(coll, body, name):
         so.location = (sx * L["x"], L["y"] - 0.075, L["z"])
         down = Vector((0, -1, -0.17)).normalized()
         so.rotation_euler = down.to_track_quat("-Z", "Z").to_euler()
-        bpy.ops.mesh.primitive_cone_add(vertices=40, radius1=0.62, radius2=0.0, depth=2.0, end_fill_type="NOTHING")
-        cone = bpy.context.active_object
-        cone.name = f"{name}_faisceau{sx}"
-        geo.move_to(cone, coll)
-        for poly in cone.data.polygons:
-            poly.use_smooth = True
-        for v in cone.data.vertices:  # pointe au phare, ouverture vers -Z local
-            v.co.z -= 1.0
-        cone.data.materials.append(beam)
+        cone = bpy.data.objects.new(f"{name}_faisceau{sx}", _mesh_copy(_cone_mesh(), {_beam_material(): beam}, f"{name}_faisceau{sx}"))  # pointe au phare, ouverture vers -Z
+        coll.objects.link(cone)
         cone.parent = so
         cone.location = (0, 0, 0)
         cone.rotation_euler = (math.radians(9), 0, 0)
@@ -337,105 +401,48 @@ def _headlights(coll, body, name):
 
 # ------------------------------------------------------------------ voitures garées
 def parked(garage, coll, spots, only_levels=None):
-    rng = random.Random(5)
     n = 0
-    for s in spots:
-        dx, dy, da = rng.uniform(-0.13, 0.13), rng.uniform(-0.22, 0.18), rng.uniform(-2.2, 2.2)
-        if s["status"] != "occupied" or s["hero"]:
+    for c in layout.parked_cars(spots):
+        if only_levels is not None and c["level"] not in only_levels:
             continue
-        if only_levels is not None and s["level"] not in only_levels:
-            continue
-        z = world.level_z(s["level"]) + (0.04 if s["level"] == 0 else 0.025)
-        geo.instance(f"garee_{s['id']}", garage.variant(s["style"], s["paint"]), coll, (s["x"] + dx, s["y"] + dy, z), s["heading"] + 90.0 + da, C.CAR_SCALE)
+        ob = garage.static_car(f"garee_{c['id']}", c["style"], c["paint"], coll)
+        ob.location = (c["x"], c["y"], c["z"])
+        ob.rotation_euler = (0, 0, math.radians(c["heading"] + 90.0))
+        ob.scale = (C.CAR_SCALE,) * 3
         n += 1
     return n
 
 
-# ------------------------------------------------------------------ animation
+# ------------------------------------------------------------------ outils d'animation
 def _S(u):
     u = np.clip(u, 0.0, 1.0)
     return u * u * u * (u * (6 * u - 15) + 10)
 
 
-def _periodic(f):
-    """Somme d'une fonction du temps de route sur toutes les voitures -> fonction du temps de boucle."""
-    return sum(f(TIME + k * C.LOOP) for k in range(-1, C.N_CARS + 1))
+def window(t_on, t_off, rise=0.22, fall=0.22):
+    """1 entre les instants t_on et t_off de la boucle (fronts adoucis), 0 ailleurs ; périodique."""
+    t_on, t_off = t_on % C.LOOP, t_off % C.LOOP
+    if t_off < t_on:
+        t_off += C.LOOP
+    out = np.zeros_like(TIME)
+    for j in (-1, 0, 1):
+        t = TIME + j * C.LOOP
+        out += _S((t - t_on) / rise) - _S((t - t_off) / fall)
+    return out
 
 
-def _time_at_y(route, y, t0, t1):
-    """Instant (entre t0 et t1) où l'essieu arrière passe à l'ordonnée y (y monotone sur l'intervalle)."""
-    m = (route.t >= t0) & (route.t <= t1)
-    t, yy = route.t[m], route.c["y"][m]
-    if yy[0] > yy[-1]:
-        t, yy = t[::-1], yy[::-1]
-    return float(np.interp(y, yy, t))
+def pulses(times, width):
+    """Somme d'impulsions brèves aux instants donnés de la boucle ; périodique."""
+    out = np.zeros_like(TIME)
+    for t0 in times:
+        for j in (-1, 0, 1):
+            out += np.exp(-(((TIME + j * C.LOOP - t0 % C.LOOP) / width) ** 2))
+    return out
 
 
-def timeline(route):
-    """Instants clés (temps de route d'une voiture) : barrières, flash, états de la place."""
-    w = route.when
-    ev = {}
-    stop = w("stop")
-    ev["flash"] = stop + 0.35
-    ev["in_open"] = stop + 0.8
-    ev["in_close"] = _time_at_y(route, C.GATE_IN_Y + R.TAIL + 1.0, w("gate_to_ramp"), w("up_a"))
-    ev["out_open"] = _time_at_y(route, C.Y_TAN - 0.4, w("exit_slow"), w("exit_go"))  # dès la sortie de la rampe
-    ev["out_close"] = _time_at_y(route, C.GATE_OUT_Y - R.TAIL - 1.0, w("exit_slow"), w("road_out"))
-    ev["parked"] = w("parked")
-    ev["leave"] = w("leave_a")
-    ev["bay_clear"] = _time_at_y(route, -R.TAIL - 0.15, w("leave_a"), w("turn_east"))  # l'arrière quitte la place C
-    ev["pass_in"] = _time_at_y(route, R.NOSE - 0.4, w("leave_a"), w("turn_east"))  # le nez entre sur la place B
-    ev["pass_out"] = _time_at_y(route, -C.SPOT_D - R.TAIL + 0.3, w("leave_a"), w("turn_east", end=True))
-    ev["reserved"] = ev["bay_clear"] - C.LOOP + 1.2  # la place libérée est réservée pour la voiture suivante
-    ev["guide_on"] = ev["reserved"] + 0.25
-    return ev
-
-
-def bake_car(route, k, root, body, wheels):
-    st = route.sample(TIME + k * C.LOOP)
-    psi, pitch = st["psi"], st["pitch"]
-    cp = np.cos(pitch)
-    x = st["x"] + R.AXLE_Y * np.cos(psi) * cp
-    y = st["y"] + R.AXLE_Y * np.sin(psi) * cp
-    z = st["z"] + R.AXLE_Y * np.sin(pitch)
-    anim.curves(root, "location", FR, [x, y, z])
-    anim.curves(root, "rotation_euler", FR, [-pitch, None, psi + math.pi / 2])
-    anim.curves(body, "rotation_euler", FR, [-st["dpitch"], st["droll"], None])
-    spin = st["dist"] / C.WHEEL_R
-    for key, (w, sx) in wheels.items():
-        front = key.startswith("av")
-        steer = st["steer"] if front else np.zeros_like(spin)
-        if sx > 0:
-            anim.curves(w, "rotation_euler", FR, [spin, None, steer if front else None])
-        else:
-            anim.curves(w, "rotation_euler", FR, [-spin, None, math.pi + steer if front else None])
-
-
-def _arm_curve(ev, open_key, close_key):
-    f = lambda t: _S((t - ev[open_key]) / 0.7) - _S((t - ev[close_key]) / 0.9)
-    return math.radians(84.0) * _periodic(f)
-
-
-def _cabin_curve():
-    t = np.mod(TIME, C.LOOP)
-    up = _S((t - 1.4) / 3.6) - _S((t - 7.6) / 3.6)
-    return 0.14 + C.ROOF_Z * up
-
-
-def _color_curve(ev, kind):
-    """Couleur (linéaire) de la boucle lumineuse d'une place au fil de la boucle."""
-    cols = {k: np.array(hex_lin(v)[:3]) for k, v in C.STATUS.items()}
-    fade = 0.22
-    if kind == "hero":  # rouge (occupée) -> verte (libérée) -> bleue (réservée) -> rouge
-        red = _periodic(lambda t: _S((t - ev["parked"]) / fade) - _S((t - ev["bay_clear"]) / fade))
-        blue = _periodic(lambda t: _S((t - ev["reserved"]) / fade) - _S((t - ev["parked"]) / fade))
-    else:  # place traversée : rouge pendant le passage de la voiture
-        red = _periodic(lambda t: _S((t - ev["pass_in"]) / fade) - _S((t - ev["pass_out"]) / fade))
-        blue = np.zeros_like(red)
-    red, blue = np.clip(red, 0, 1), np.clip(blue, 0, 1)
-    green = np.clip(1 - red - blue, 0, 1)
-    rgb = red[:, None] * cols["occupied"] + blue[:, None] * cols["reserved"] + green[:, None] * cols["available"]
-    return rgb, red, blue
+def _rest(values, rest=0.0):
+    """Images et valeurs d'une courbe, complétées par la valeur de repos sur l'image du fond."""
+    return np.concatenate([FR, [PLATE_FRAME]]), np.concatenate([np.asarray(values, dtype=float), [rest]])
 
 
 def _anim_material(M, name, color, strength):
@@ -459,38 +466,117 @@ def _active_ranges(mask):
     return out
 
 
+def _sig(*arrays):
+    """Empreinte par image d'un état animé (sert à réutiliser les zones déjà rendues)."""
+    out = np.zeros(len(FR), dtype=np.int64)
+    for a in arrays:
+        out = out * 1000003 + np.round(np.asarray(a, dtype=float) * 2000.0).astype(np.int64)
+    return out
+
+
+# ------------------------------------------------------------------ événements de la boucle
+def gate_events(fleet):
+    """Passages aux barrières dans la boucle : entrées (lecture de plaque) et sorties."""
+    ins, outs = [], []
+    for c in fleet.chains:
+        if c.has("in_clear"):
+            stop = c.gate == "stop"
+            flash = (c.at("gate") + 0.35) if stop else (c.at("anpr") + 0.1)
+            ins.append({"chain": c.name, "plate": c.plate, "style": c.style, "stop": c.at("gate") if stop else None, "flash": flash % C.LOOP, "open": (flash + (0.45 if stop else 0.1)) % C.LOOP, "close": c.at("in_clear")})
+        if c.has("out_clear"):
+            outs.append({"chain": c.name, "plate": c.plate, "open": c.at("out_ramp"), "gate": c.at("out_gate"), "close": c.at("out_clear")})
+    return sorted(ins, key=lambda e: e["flash"]), sorted(outs, key=lambda e: e["open"])
+
+
+def bay_events(fleet):
+    """Occupation des places de la flotte : {(niveau, rangée, colonne): {on, off, …}} (instants de la boucle)."""
+    out = {}
+    for c in fleet.chains:
+        if c.bay is None:
+            continue
+        e = {"chain": c.name, "on": c.at("parked"), "off": c.at("bay_clear") if c.has("bay_clear") else c.at("backed")}
+        if c.name == "hero":  # la place se réserve quand la voiture suivante arrive sur le toit
+            e["reserved"] = (c.at("roof") + 0.4) % C.LOOP
+            e["guide"] = (c.at("roof") + 0.65) % C.LOOP
+        out[c.bay] = e
+    return out
+
+
+# ------------------------------------------------------------------ véhicules en circulation
+def bake_car(chain, k, root, body, wheels):
+    d = chain.d
+    st = chain.state(TIME, k)
+    on = st["on"] > 0
+    psi, pitch = st["psi"], st["pitch"]
+    cp = np.cos(pitch)
+    x = st["x"] + d.axle_y * np.cos(psi) * cp
+    y = st["y"] + d.axle_y * np.sin(psi) * cp
+    z = np.where(on, st["z"] + d.axle_y * np.sin(pitch), HIDE_Z)
+    anim.curves(root, "location", FR, [x, y, z])
+    anim.curves(root, "rotation_euler", FR, [-pitch, None, psi + math.pi / 2])
+    anim.curves(body, "rotation_euler", FR, [-st["dpitch"], st["droll"], None])
+    spin = st["dist"] / d.wheel_r
+    for key, (w, sx) in wheels.items():
+        front = key.startswith("av")
+        steer = st["steer"] if front else np.zeros_like(spin)
+        if sx > 0:
+            anim.curves(w, "rotation_euler", FR, [spin, None, steer if front else None])
+        else:
+            anim.curves(w, "rotation_euler", FR, [-spin, None, math.pi + steer if front else None])
+    return st, on
+
+
+def _bake_lights(M, night, chain, k, st, on, lights):
+    tau = chain.tau(TIME, k)
+    lit = lights_on(chain.trip, tau) * on
+    stop = braking(st) * lit
+    emission = lambda mat: next(n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED").inputs["Emission Strength"].path_from_id("default_value")
+    tail = M.tail * (lit * (1.0 + 1.8 * stop) if night else 0.5 + 1.6 * stop)
+    anim.curve(lights["tail"].node_tree, emission(lights["tail"]), 0, FR, tail)
+    if night:
+        anim.curve(lights["lamp"].node_tree, emission(lights["lamp"]), 0, FR, M.lamp * lit)
+        for spot in lights["spots"]:
+            anim.curve(spot, "energy", 0, FR, 520.0 * lit)
+        gain = next(n for n in lights["beam"].node_tree.nodes if n.type == "MATH" and n.operation == "MULTIPLY" and abs(n.inputs[1].default_value - 0.36) < 1e-6)
+        anim.curve(lights["beam"].node_tree, gain.inputs[1].path_from_id("default_value"), 0, FR, 0.36 * lit)
+    return lit, stop
+
+
+def _cabin_curve():
+    """Ascenseur : P0 -> P3 -> P1 -> P0 -> P2 -> P0 sur la boucle."""
+    moves = [(3.0, 5.5, 3), (14.0, 4.0, -2), (22.0, 3.0, -1), (29.0, 4.2, 2), (38.0, 4.2, -2)]  # départ, durée, niveaux
+    t = np.mod(TIME, C.LOOP)
+    return 0.14 + sum(dl * C.LEVEL_H * _S((t - t0) / dur) for t0, dur, dl in moves)
+
+
 def build(scene, M, spots, night):
-    route = get_route()
-    ev = timeline(route)
+    fleet = traffic.plan()
     garage = Garage(M, night)
-    parked_coll = geo.collection("voitures_garees")
-    n_parked = parked(garage, parked_coll, spots)
+    n_parked = parked(garage, geo.collection("voitures_garees"), spots)
     dyn_cars = geo.collection("voitures_animees")
     dyn_misc = geo.collection("elements_animes")
-    registry = []
+    registry, sigs = [], {}
 
-    # ---- voitures « héros »
-    for k in range(C.N_CARS):
-        root, body, wheels, lights = garage.hero(dyn_cars, f"auto{k}")
-        bake_car(route, k, root, body, wheels)
-        if night:  # phares éteints pendant que la voiture est garée
-            on = headlights_on(ev, TIME + k * C.LOOP)
-            lb = next(n for n in lights["lamp"].node_tree.nodes if n.type == "BSDF_PRINCIPLED")
-            anim.curve(lights["lamp"].node_tree, lb.inputs["Emission Strength"].path_from_id("default_value"), 0, FR, M.lamp * on)
-            for spot in lights["spots"]:
-                anim.curve(spot, "energy", 0, FR, 520.0 * on)
-            gain = next(n for n in lights["beam"].node_tree.nodes if n.type == "MATH" and n.operation == "MULTIPLY" and abs(n.inputs[1].default_value - 0.36) < 1e-6)
-            anim.curve(lights["beam"].node_tree, gain.inputs[1].path_from_id("default_value"), 0, FR, 0.36 * on)
-        registry.append({"kind": "car", "root": root.name})
+    # ---- la flotte
+    for ci, chain in enumerate(fleet.chains):
+        for k in range(chain.m):
+            name = f"{chain.name}_{k}"
+            root, body, wheels, lights = garage.car(dyn_cars, name, chain.style, chain.paint, chain.plate)
+            st, on = bake_car(chain, k, root, body, wheels)
+            lit, stop = _bake_lights(M, night, chain, k, st, on, lights)
+            registry.append({"kind": "car", "root": root.name, "chain": ci, "k": k})
+            sigs[root.name] = _sig(np.where(on, st["x"], 0.0), np.where(on, st["y"], 0.0), np.where(on, st["z"], HIDE_Z), np.where(on, st["psi"], 0.0), lit, stop)
 
     # ---- lisses des barrières
+    ins, outs = gate_events(fleet)
     xi = C.ISLAND_X
-    for name, y, d, ok, ck in (("lisse_entree", C.GATE_IN_Y, 1, "in_open", "in_close"), ("lisse_sortie", C.GATE_OUT_Y, -1, "out_open", "out_close")):
+    for name, y, d, events in (("lisse_entree", C.GATE_IN_Y, 1, ins), ("lisse_sortie", C.GATE_OUT_Y, -1, outs)):
         arm = world.barrier_arm(M, dyn_misc, name, d)
         arm.location = (xi + d * 0.3, y, 1.13)
-        ang = _arm_curve(ev, ok, ck)
-        anim.curve(arm, "rotation_euler", 1, FR, -d * ang)
-        registry.append({"kind": "obj", "name": name, "pad": 0.5, "active": _active_ranges(ang > 1e-4)})
+        up = np.clip(sum(window(e["open"], e["close"], 0.7, 0.9) for e in events), 0.0, 1.0)
+        anim.curve(arm, "rotation_euler", 1, *_rest(-d * math.radians(84.0) * up))
+        registry.append({"kind": "obj", "name": name, "pad": 0.5, "active": _active_ranges(up > 1e-4)})
+        sigs[name] = _sig(up)
 
     # ---- flash de la caméra ANPR (voie d'entrée)
     flash = bpy.data.lights.new("anpr_flash", "SPOT")
@@ -505,47 +591,59 @@ def build(scene, M, spots, night):
     tgt = Vector((C.X_IN, C.GATE_IN_Y - 2.4, 0.9))
     fo.location = src
     fo.rotation_euler = (tgt - src).to_track_quat("-Z", "Y").to_euler()
-    pulse = _periodic(lambda t: np.exp(-(((t - ev["flash"]) / 0.045) ** 2)))
-    anim.curve(flash, "energy", 0, FR, (1900.0 if night else 5200.0) * pulse)
+    pulse = pulses([e["flash"] for e in ins], 0.045)
+    anim.curve(flash, "energy", 0, *_rest((1900.0 if night else 5200.0) * pulse))
     ring_mat, rb = _anim_material(M, "anpr_anneau", "#eaf2ff", 0.0)
     rb.inputs["Base Color"].default_value = hex_lin("#20242b")
-    anim.curve(ring_mat.node_tree, rb.inputs["Emission Strength"].path_from_id("default_value"), 0, FR, (60.0 if night else 26.0) * pulse)
+    anim.curve(ring_mat.node_tree, rb.inputs["Emission Strength"].path_from_id("default_value"), 0, *_rest((60.0 if night else 26.0) * pulse))
     g = Geo()
     g.cyl(0, 0, 0.0, 0.012, 0.13, n=28)
     ring = g.to_object("anpr_anneau", dyn_misc, ring_mat, smooth=False)
     d = (tgt - src).normalized()
     ring.matrix_world = Matrix.Translation(src + d * 0.33) @ d.to_track_quat("Z", "Y").to_matrix().to_4x4()
     registry.append({"kind": "box", "name": "flash", "min": [C.ROAD_X[0] - 1, C.GATE_IN_Y - 9.5, 0], "max": [C.ROAD_X[1] + 1.5, -22.5, 3.4], "active": _active_ranges(pulse > 2e-3)})
+    sigs["flash"] = _sig(pulse)
 
     # ---- cabine d'ascenseur
     cab = world.lift_cabin(M, dyn_misc)
     zc = _cabin_curve()
     anim.curve(cab, "location", 2, FR, zc)
     registry.append({"kind": "obj", "name": cab.name, "pad": 2.6 if night else 1.2, "active": [[0, C.FRAMES - 1]], "children": True})
+    sigs[cab.name] = _sig(zc)
 
-    # ---- boucles lumineuses de la place réservée et de la place traversée
-    for kind, row in (("hero", C.HERO_ROW), ("pass", C.PASS_ROW)):
-        rgb, red, blue = _color_curve(ev, kind)
-        mat, b = _anim_material(M, f"led_{kind}", C.STATUS["occupied"], M.led)
+    # ---- boucles lumineuses des places de la flotte : rouge quand la voiture est là, verte sinon
+    #      (place suivie par le site : bleue, « réservée », dès que la voiture suivante est sur le toit)
+    cols = {k: np.array(hex_lin(v)[:3]) for k, v in C.STATUS.items()}
+    bays = bay_events(fleet)
+    hero = fleet.by_name["hero"]
+    loops = [(key, window(e["on"], e["off"]), window(e["reserved"], e["on"]) if "reserved" in e else np.zeros_like(TIME)) for key, e in bays.items()]
+    loops.append(((C.HERO_LEVEL, C.PASS_ROW, C.HERO_COL), window(hero.at("pass_in"), hero.at("pass_out")), np.zeros_like(TIME)))
+    for (lv, row, col), red, blue in loops:
+        red, blue = np.clip(red, 0, 1), np.clip(blue, 0, 1)
+        green = np.clip(1 - red - blue, 0, 1)
+        rgb = red[:, None] * cols["occupied"] + blue[:, None] * cols["reserved"] + green[:, None] * cols["available"]
+        sid = C.spot_id(lv, row, col)
+        mat, b = _anim_material(M, f"led_{sid}", C.STATUS["available"], M.led)
         for sock_name in ("Emission Color", "Base Color"):
             path = b.inputs[sock_name].path_from_id("default_value")
-            anim.curves(mat.node_tree, path, FR, [rgb[:, 0], rgb[:, 1], rgb[:, 2]])
-        ob = world.single_loop(M, dyn_misc, f"boucle_{kind}", C.HERO_LEVEL, row, C.HERO_COL, mat)
-        base = red > 0.999 if kind == "hero" else (red < 0.001)
-        registry.append({"kind": "obj", "name": ob.name, "pad": 1.0 if night else 0.5, "active": _active_ranges(~base)})
+            for i in range(3):
+                anim.curve(mat.node_tree, path, i, *_rest(rgb[:, i], cols["available"][i]))
+        ob = world.single_loop(M, dyn_misc, f"boucle_{sid}", lv, row, col, mat)
+        registry.append({"kind": "obj", "name": ob.name, "pad": 1.0 if night else 0.5, "active": _active_ranges(green < 0.999)})
+        sigs[ob.name] = _sig(red, blue)
 
-    # ---- chevrons de guidage vers la place réservée
-    t0, t1 = route.when("turn_west", end=True), route.when("park")
-    tt = np.linspace(t0, t1, 400)
-    st = route.sample(tt)
-    dist = st["dist"] - st["dist"][0]
-    n_ch = int(dist[-1] // 1.9)
+    # ---- chevrons de guidage vers la place suivie
+    run = hero.trip.legs[0].run
+    qa, qb = hero.trip.marks["guide_a"][1], hero.trip.marks["guide_b"][1]
+    n_ch = int((qb - qa) // 1.9)
     z = C.ROOF_Z + 0.025 + 0.014
     blue_lin = np.array(hex_lin(C.STATUS["reserved"])[:3])
-    guide_on = np.clip(_periodic(lambda t: _S((t - ev["guide_on"]) / 0.4) - _S((t - ev["parked"] + 0.6) / 0.4)), 0.0, 1.0)
+    deck = np.array(hex_lin("#59606c")[:3])
+    guide_on = np.clip(window(bays[hero.bay]["guide"], hero.at("parked") - 0.6, 0.4, 0.4), 0.0, 1.0)
+    wave_hz = round(1.6 * C.LOOP) / C.LOOP  # un nombre entier d'ondes par boucle
     for i in range(n_ch):
-        d = 1.4 + i * 1.9
-        px, py, ps = (float(np.interp(d, dist, st[key])) for key in ("x", "y", "psi"))
+        p = run.at(qa + 1.4 + i * 1.9)
+        px, py, ps = float(p["x"]), float(p["y"]), float(p["heading"])
         g = Geo()
         c, s = math.cos(ps), math.sin(ps)
         for sgn in (1, -1):  # deux barres en « > »
@@ -553,17 +651,16 @@ def build(scene, M, spots, night):
             g.flat([(px + a * c - b * s, py + a * s + b * c) for a, b in (pts if sgn > 0 else pts[::-1])], z)
         mat, b = _anim_material(M, f"chevron_{i}", C.STATUS["reserved"], 0.0)
         b.inputs["Base Color"].default_value = hex_lin("#59606c")
-        phase = np.mod(TIME * 1.6 - i * 0.16, 1.0)  # onde qui court vers la place
-        wave = 0.35 + 0.65 * np.exp(-((phase - 0.5) / 0.18) ** 2)
-        strength = M.led * 1.25 * guide_on * wave
-        anim.curve(mat.node_tree, b.inputs["Emission Strength"].path_from_id("default_value"), 0, FR, strength)
+        phase = np.mod(TIME * wave_hz - i * 0.16, 1.0)  # onde qui court vers la place
+        strength = M.led * 1.25 * guide_on * (0.35 + 0.65 * np.exp(-((phase - 0.5) / 0.18) ** 2))
+        anim.curve(mat.node_tree, b.inputs["Emission Strength"].path_from_id("default_value"), 0, *_rest(strength))
         bc = b.inputs["Base Color"].path_from_id("default_value")
-        deck = np.array(hex_lin("#59606c")[:3])
-        mixc = deck[None, :] + (blue_lin - deck)[None, :] * np.clip(guide_on, 0, 1)[:, None]
-        anim.curves(mat.node_tree, bc, FR, [mixc[:, 0], mixc[:, 1], mixc[:, 2]])
+        mixc = deck[None, :] + (blue_lin - deck)[None, :] * guide_on[:, None]
+        for j in range(3):
+            anim.curve(mat.node_tree, bc, j, *_rest(mixc[:, j], deck[j]))
         ob = g.to_object(f"chevron_{i}", dyn_misc, mat, smooth=False)
         registry.append({"kind": "obj", "name": ob.name, "pad": 0.8 if night else 0.35, "active": _active_ranges(guide_on > 1e-3)})
+        sigs[ob.name] = _sig(strength, guide_on)
 
     scene["autopark_dyn"] = json.dumps(registry)
-    scene["autopark_events"] = json.dumps({k: round(float(v), 4) for k, v in ev.items()})
-    return {"route": route, "events": ev, "registry": registry, "garage": garage, "n_parked": n_parked}
+    return {"fleet": fleet, "registry": registry, "sigs": sigs, "garage": garage, "n_parked": n_parked, "gate": (ins, outs), "bays": bays}

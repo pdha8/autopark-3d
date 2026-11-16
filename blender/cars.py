@@ -1,13 +1,9 @@
 """
-Carrosseries des voitures, modélisées dans Blender (surfaces subdivisées) pour
-ressembler aux voitures « jouet » arrondies de la vidéo de référence :
-  - mini  : citadine façon Mini (voitures qui roulent, couleur d'accent, toit blanc)
-  - sedan : berline ancienne bombée (blanche, garée)
-  - hatch : petite citadine ronde (blanche, garée)
-
-Les voitures exportées depuis le site gardent leurs roues, leurs plaques et leur
-animation ; seule la carrosserie (enfants du nœud « body ») est remplacée.
-Repère local Blender d'une voiture : avant = -Y, haut = +Z, largeur = X, sol à z = 0.
+Carrosseries des véhicules, modélisées dans Blender (surfaces subdivisées), dans
+le style « jouet » arrondi de la maquette. Les gabarits sont décrits dans
+carspecs.py : mini, sedan (berline), hatch (citadine), suv, van (fourgon),
+pickup, coupe, taxi (berline + lumineux).
+Repère local Blender d'un véhicule : avant = -Y, haut = +Z, largeur = X, sol à z = 0.
 """
 
 import math
@@ -17,106 +13,7 @@ import bpy
 from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 
-# --------------------------------------------------------------------------
-# formes : sections successives de l'avant (y négatif) vers l'arrière
-# zb/zt : bas/haut de la section ; wb/wm/wt : demi-largeurs bas/flanc/haut ;
-# zl/zh : bas et haut du flanc vertical
-# --------------------------------------------------------------------------
-STYLES = {
-    "mini": {
-        "wheels": (0.53, 0.37),  # y des essieux, voie
-        "arch": 0.2,
-        "keys": [
-            # y      zb    zt     wb    wm     wt     zl     zh    dip
-            (-0.866, 0.21, 0.40, 0.33, 0.37, 0.30, 0.25, 0.37, 0.0),
-            (-0.850, 0.18, 0.45, 0.39, 0.425, 0.36, 0.22, 0.42, 0.0),
-            (-0.800, 0.165, 0.475, 0.405, 0.448, 0.38, 0.21, 0.45, 0.0),
-            (-0.600, 0.165, 0.50, 0.41, 0.455, 0.39, 0.21, 0.47, 0.012),
-            (-0.380, 0.165, 0.52, 0.41, 0.455, 0.39, 0.21, 0.48, 0.008),
-            (-0.290, 0.165, 0.64, 0.41, 0.455, 0.37, 0.21, 0.485, 0.0),
-            (-0.200, 0.165, 0.82, 0.41, 0.455, 0.345, 0.21, 0.485, 0.0),
-            (0.250, 0.165, 0.84, 0.41, 0.455, 0.345, 0.21, 0.485, 0.0),
-            (0.700, 0.165, 0.835, 0.41, 0.455, 0.345, 0.21, 0.485, 0.0),
-            (0.800, 0.165, 0.81, 0.405, 0.45, 0.34, 0.21, 0.48, 0.0),
-            (0.852, 0.18, 0.75, 0.39, 0.43, 0.33, 0.22, 0.47, 0.0),
-            (0.870, 0.21, 0.66, 0.34, 0.38, 0.29, 0.26, 0.45, 0.0),
-        ],
-        "cabin": (-0.33, 0.83),  # vitres : y début/fin
-        "belt": 0.49,
-        "roof_line": 0.80,
-        "b_pillar": (0.22, 0.31),
-        "lamps": {"y": -0.80, "x": 0.27, "z": 0.405, "r": 0.066},
-        "tails": {"x": 0.335, "z": (0.40, 0.31), "w": 0.05, "h": 0.07},
-        "plate": {"front": 0.26, "rear": 0.32},
-        "bumper": 0.195,
-        "handle": (0.13, 0.465),
-        "mirror": (-0.25, 0.495),
-        "grille": None,
-        "scoop": False,
-    },
-    "sedan": {
-        "wheels": (0.60, 0.38),
-        "arch": 0.215,
-        "keys": [
-            (-0.956, 0.22, 0.36, 0.30, 0.34, 0.27, 0.26, 0.33, 0.0),
-            (-0.935, 0.19, 0.42, 0.37, 0.41, 0.34, 0.23, 0.39, 0.025),
-            (-0.870, 0.175, 0.46, 0.41, 0.45, 0.39, 0.21, 0.42, 0.05),
-            (-0.700, 0.175, 0.48, 0.43, 0.468, 0.42, 0.21, 0.44, 0.065),
-            (-0.470, 0.175, 0.485, 0.43, 0.468, 0.42, 0.21, 0.45, 0.055),
-            (-0.360, 0.175, 0.53, 0.43, 0.468, 0.40, 0.21, 0.455, 0.0),
-            (-0.200, 0.175, 0.745, 0.43, 0.468, 0.36, 0.21, 0.46, 0.0),
-            (0.000, 0.175, 0.775, 0.43, 0.468, 0.355, 0.21, 0.46, 0.0),
-            (0.200, 0.175, 0.75, 0.43, 0.468, 0.36, 0.21, 0.46, 0.0),
-            (0.340, 0.175, 0.66, 0.43, 0.468, 0.375, 0.21, 0.46, 0.0),
-            (0.480, 0.175, 0.53, 0.43, 0.468, 0.395, 0.21, 0.455, 0.0),
-            (0.700, 0.175, 0.50, 0.425, 0.465, 0.40, 0.21, 0.45, 0.012),
-            (0.880, 0.19, 0.46, 0.40, 0.44, 0.37, 0.23, 0.42, 0.0),
-            (0.956, 0.22, 0.40, 0.33, 0.37, 0.30, 0.26, 0.37, 0.0),
-        ],
-        "cabin": (-0.33, 0.47),
-        "belt": 0.46,
-        "roof_line": None,
-        "b_pillar": (0.02, 0.10),
-        "lamps": {"y": -0.86, "x": 0.31, "z": 0.415, "r": 0.062},
-        "tails": {"x": 0.345, "z": (0.39, 0.33), "w": 0.045, "h": 0.05},
-        "plate": {"front": 0.235, "rear": 0.30},
-        "bumper": 0.2,
-        "handle": (-0.03, 0.44),
-        "mirror": (-0.22, 0.455),
-        "grille": {"z": 0.34, "w": 0.13, "h": 0.06, "chrome": True},
-        "scoop": False,
-    },
-    "hatch": {
-        "wheels": (0.55, 0.38),
-        "arch": 0.205,
-        "keys": [
-            (-0.886, 0.22, 0.37, 0.31, 0.35, 0.28, 0.26, 0.34, 0.0),
-            (-0.866, 0.19, 0.43, 0.37, 0.41, 0.34, 0.23, 0.40, 0.0),
-            (-0.800, 0.175, 0.47, 0.405, 0.448, 0.38, 0.21, 0.435, 0.012),
-            (-0.600, 0.175, 0.495, 0.42, 0.462, 0.39, 0.21, 0.46, 0.022),
-            (-0.400, 0.175, 0.515, 0.42, 0.462, 0.39, 0.21, 0.47, 0.012),
-            (-0.330, 0.175, 0.58, 0.42, 0.462, 0.375, 0.21, 0.475, 0.0),
-            (-0.100, 0.175, 0.785, 0.42, 0.462, 0.34, 0.21, 0.478, 0.0),
-            (0.200, 0.175, 0.81, 0.42, 0.462, 0.335, 0.21, 0.478, 0.0),
-            (0.500, 0.175, 0.795, 0.42, 0.462, 0.34, 0.21, 0.478, 0.0),
-            (0.700, 0.175, 0.74, 0.42, 0.46, 0.345, 0.21, 0.475, 0.0),
-            (0.830, 0.18, 0.62, 0.40, 0.445, 0.34, 0.22, 0.47, 0.0),
-            (0.886, 0.22, 0.49, 0.34, 0.38, 0.30, 0.26, 0.44, 0.0),
-        ],
-        "cabin": (-0.30, 0.76),
-        "belt": 0.478,
-        "roof_line": None,
-        "b_pillar": (0.20, 0.28),
-        "lamps": {"y": -0.82, "x": 0.275, "z": 0.415, "r": 0.07},
-        "tails": {"x": 0.345, "z": (0.41, 0.34), "w": 0.045, "h": 0.06},
-        "plate": {"front": 0.235, "rear": 0.32},
-        "bumper": 0.2,
-        "handle": (0.10, 0.455),
-        "mirror": (-0.19, 0.485),
-        "grille": {"z": 0.335, "w": 0.12, "h": 0.05},
-        "scoop": True,
-    },
-}
+from carspecs import STYLES  # noqa: E402  (gabarits : données pures)
 
 FIELDS = ("y", "zb", "zt", "wb", "wm", "wt", "zl", "zh", "dip")
 
@@ -442,6 +339,30 @@ def build(style, mats, tag):
             mi.location = loc + Vector((sx * 0.022, 0, 0.022))
             mi.data.materials.append(mats["paint"])
             objs.append(mi)
+
+    # ---- barres de toit (SUV)
+    if spec.get("rails"):
+        y0, y1, rx = spec["rails"]
+        for sx in (1, -1):
+            loc, nor = _hit(bvh, (sx * rx, (y0 + y1) / 2, 2.0), (0, 0, -1))
+            if loc is None:
+                continue
+            bar = _rounded_box(f"{tag}_rail{sx}", 0.022, y1 - y0, 0.022, 0.009)
+            bar.location = (sx * rx, (y0 + y1) / 2, loc.z + 0.026)
+            bar.data.materials.append(mats["dark"])
+            objs.append(bar)
+
+    # ---- lumineux de toit (taxi)
+    if spec.get("sign"):
+        loc, nor = _hit(bvh, (0, 0.0, 2.0), (0, 0, -1))
+        if loc is not None:
+            foot = _rounded_box(f"{tag}_sign_pied", 0.30, 0.12, 0.02, 0.008)
+            foot.location = (0, 0.0, loc.z + 0.008)
+            foot.data.materials.append(mats["dark"])
+            sign = _rounded_box(f"{tag}_sign", 0.25, 0.085, 0.07, 0.022)
+            sign.location = (0, 0.0, loc.z + 0.05)
+            sign.data.materials.append(mats["sign"])
+            objs += [foot, sign]
 
     return objs, bvh
 

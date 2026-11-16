@@ -10,7 +10,7 @@ const STATUSES = ['available', 'occupied', 'reserved'];
 export const RATE = layout.rate; // € / heure
 export const OVERSTAY = 1.5; // majoration en cas de dépassement
 // places pilotées par la vidéo (la voiture bleue s'y gare en boucle) : hors simulation
-export const LOCKED = new Set([sync.bay, sync.passBay]);
+export const LOCKED = new Set([...(layout.locked || []), sync.bay, sync.passBay]); // places animées par la vidéo
 const ROW_Y = [2.5, 13.5, 18.5, 29.5];
 
 export function randomPlate() {

@@ -105,7 +105,7 @@ export class VideoScene {
     }
     if (!(await this.ready(variant))) return; // vidéo manquante : on garde l'actuelle
     if (id !== this._switch) return; // un autre changement a eu lieu entre-temps
-    const d = next.duration || cur.duration || 12;
+    const d = next.duration || cur.duration || 48;
     next.currentTime = (this.time + 1 / 30) % d;
     await once(next, 'seeked');
     if (id !== this._switch) return;

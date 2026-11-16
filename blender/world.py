@@ -119,12 +119,13 @@ def building(M, coll):
     for lv in range(1, C.NLEV):
         z = level_z(lv)
         g.box(-C.BX, C.BX + 0.25, -C.BY - 0.25, -C.BY - 0.03, z, z + 0.22)
-        if lv < C.NLEV - 1:
+        ya, yb = C.TOWER[1] + C.R_IN - 0.12, C.TOWER[1] + C.R_OUT + 0.12
+        if lv < 2:
             g.box(C.BX + 0.03, C.BX + 0.25, -C.BY, C.BY, z, z + 0.22)
-        else:  # le toit s'ouvre sur la passerelle
-            ya, yb = C.TOWER[1] + C.R_IN - 0.12, C.TOWER[1] + C.R_OUT + 0.12
+        else:  # le niveau P2 et le toit s'ouvrent sur leur passerelle
             g.box(C.BX + 0.03, C.BX + 0.25, -C.BY, ya, z, z + 0.22)
             g.box(C.BX + 0.03, C.BX + 0.25, yb, C.BY, z, z + 0.22)
+        if lv == C.NLEV - 1:
             g.box(C.BX + 0.25, C.TOWER[0], ya, ya + 0.22, z, z + 0.22)
             g.box(C.BX + 0.25, C.TOWER[0], yb - 0.22, yb, z, z + 0.22)
     g.to_object("bordures", coll, M["concrete"], bevel=0.04, segments=2)
@@ -133,10 +134,13 @@ def building(M, coll):
     for lv in range(1, C.NLEV):
         z = level_z(lv) + 0.22
         _railing(g, [(-C.BX, -C.BY - 0.14), (C.BX + 0.14, -C.BY - 0.14)], z)
-        if lv < C.NLEV - 1:
+        ya, yb = C.TOWER[1] + C.R_IN - 0.01, C.TOWER[1] + C.R_OUT + 0.01
+        if lv < 2:
             _railing(g, [(C.BX + 0.14, -C.BY - 0.14), (C.BX + 0.14, C.BY)], z)
+        elif lv == 2:
+            _railing(g, [(C.BX + 0.14, -C.BY - 0.14), (C.BX + 0.14, ya)], z)
+            _railing(g, [(C.BX + 0.14, yb), (C.BX + 0.14, C.BY)], z)
         else:
-            ya, yb = C.TOWER[1] + C.R_IN - 0.01, C.TOWER[1] + C.R_OUT + 0.01
             _railing(g, [(C.BX + 0.14, -C.BY - 0.14), (C.BX + 0.14, ya), (C.TOWER[0], ya)], z)
             _railing(g, [(C.TOWER[0], yb), (C.BX + 0.14, yb), (C.BX + 0.14, C.BY)], z)
     g.to_object("garde_corps", coll, M["metal"], smooth=True, weighted=False)
@@ -212,7 +216,7 @@ def bay_loops(M, coll, spots, skip=()):
 def single_loop(M, coll, name, level, row, col, mat):
     g = Geo()
     inner, outer = _loop_pts(*bay_rect(row, col))
-    g.band(inner, outer, level_z(level) + 0.025 + 0.012)
+    g.band(inner, outer, level_z(level) + (0.04 if level == 0 else 0.025) + 0.012)
     return g.to_object(name, coll, mat, smooth=False)
 
 
@@ -241,8 +245,45 @@ def level_markings(M, coll):
 
 
 # ------------------------------------------------------------------ tour de rampe
+P2_GAP = (465.0, 522.0)  # angles (°) entre lesquels la rive extérieure de la rampe est ouverte
+
+
 def helix_z(theta):
     return C.PITCH * theta / 360.0
+
+
+def spur(M, coll, ph, pw, t_slab):
+    """Passerelle du niveau P2 : plan incliné entre la rive de la rampe et celle du niveau,
+    juste sous la passerelle du toit (arrivée au nord, départ au sud)."""
+    from traffic import spur_z
+
+    cx, cy = C.TOWER
+    x0 = C.BX + 0.2
+    ys = [cy + C.R_IN + 0.02 + (C.R_OUT - C.R_IN - 0.04) * i / 28 for i in range(29)]
+
+    def edge(y):  # rive de la rampe à l'ordonnée y
+        return cx - math.sqrt(max(C.R_OUT**2 - (y - cy) ** 2, 0.0)) + 0.03
+
+    g = Geo()
+    a = [(x0, y, spur_z(x0, y) + 0.005) for y in ys]
+    b = [(edge(y), y, spur_z(edge(y), y) + 0.005) for y in ys]
+    g.grid([a, b], mat=1, flip=True)  # dessus (revêtement)
+    g.grid([[(x, y, z - t_slab) for x, y, z in a], [(x, y, z - t_slab) for x, y, z in b]], mat=0)
+    for row in (0, -1):  # chants nord et sud
+        p, q = a[row], b[row]
+        pts = [(p[0], p[1], p[2] - t_slab), (q[0], q[1], q[2] - t_slab), q, p]
+        g._face([g.bm.verts.new(v) for v in (pts if row == 0 else pts[::-1])], 0)
+    g.to_object("passerelle_P2", coll, [M["concrete"], M["deck"]], smooth=True, weighted=False, angle=50)
+
+    g = Geo()  # garde-corps pleins : au nord jusqu'à la rive de la rampe, court retour au sud
+    a_gap = math.radians(P2_GAP[0])
+    north_end = cx + (C.R_OUT + pw / 2) * math.cos(a_gap)
+    south_y = cy + C.R_IN - 0.05
+    for y, x1 in ((cy + C.R_OUT - 0.02, north_end), (south_y, edge(south_y) + 0.1)):
+        xs = [x0 + (x1 - x0) * i / 16 for i in range(17)]
+        rows = [[(x, y + dy, spur_z(x, max(min(y, cy + C.R_OUT - 0.3), cy + C.R_IN + 0.3)) + dz) for x in xs] for dy, dz in ((-pw / 2, -t_slab), (-pw / 2, ph), (pw / 2, ph), (pw / 2, -t_slab))]
+        g.grid(rows, mat=0, flip=True)
+    g.to_object("passerelle_P2_parapets", coll, M["concrete"], smooth=True, weighted=False, angle=50)
 
 
 def tower(M, coll):
@@ -251,8 +292,11 @@ def tower(M, coll):
     n = int(C.TH_END / step)
     thetas = [C.TH_END * i / n for i in range(n + 1)]
 
-    def ring(r, dz):
-        return [(cx + r * math.cos(math.radians(t)), cy + r * math.sin(math.radians(t)), helix_z(t) + dz) for t in thetas]
+    def ring(r, dz, i0=0, i1=None):
+        return [(cx + r * math.cos(math.radians(t)), cy + r * math.sin(math.radians(t)), helix_z(t) + dz) for t in thetas[i0 : (n if i1 is None else i1) + 1]]
+
+    # la rive extérieure s'interrompt devant la passerelle du niveau P2
+    spans = {True: [(0, int(P2_GAP[0] / step)), (int(math.ceil(P2_GAP[1] / step)), n)], False: [(0, n)]}
 
     t_slab = 0.28
     g = Geo()
@@ -266,25 +310,31 @@ def tower(M, coll):
     ph, pw = 0.62, 0.16
     g = Geo()
     for r0, r1 in ((C.R_OUT, C.R_OUT + pw), (C.R_IN - pw, C.R_IN)):
-        g.grid([ring(r0, -t_slab), ring(r0, ph), ring(r1, ph), ring(r1, -t_slab)], mat=0, flip=(r0 < C.R_OUT - 1))
-        for t in (thetas[0], thetas[-1]):  # bouchons d'extrémité
-            a = math.radians(t)
-            pts = [(cx + r * math.cos(a), cy + r * math.sin(a), helix_z(t) + dz) for r, dz in ((r0, -t_slab), (r1, -t_slab), (r1, ph), (r0, ph))]
-            g._face([g.bm.verts.new(p) for p in pts], 0)
+        outer = r0 > C.R_OUT - 1
+        for i0, i1 in spans[outer]:
+            g.grid([ring(r0, -t_slab, i0, i1), ring(r0, ph, i0, i1), ring(r1, ph, i0, i1), ring(r1, -t_slab, i0, i1)], mat=0, flip=not outer)
+            for t in (thetas[i0], thetas[i1]):  # bouchons d'extrémité
+                a = math.radians(t)
+                pts = [(cx + r * math.cos(a), cy + r * math.sin(a), helix_z(t) + dz) for r, dz in ((r0, -t_slab), (r1, -t_slab), (r1, ph), (r0, ph))]
+                g._face([g.bm.verts.new(p) for p in pts], 0)
     g.to_object("rampe_parapets", coll, M["concrete"], smooth=True, weighted=False, angle=50)
 
     g = Geo()
-    for r in (C.R_OUT + pw / 2, C.R_IN - pw / 2):
-        g.tube(ring(r, RAIL_H), 0.04, n=8)
-        for i in range(0, n + 1, 6):
-            t = thetas[i]
-            x, y = cx + r * math.cos(math.radians(t)), cy + r * math.sin(math.radians(t))
-            g.box(x - 0.03, x + 0.03, y - 0.03, y + 0.03, helix_z(t) + ph, helix_z(t) + RAIL_H)
+    for r, outer in ((C.R_OUT + pw / 2, True), (C.R_IN - pw / 2, False)):
+        for i0, i1 in spans[outer]:
+            g.tube(ring(r, RAIL_H, i0, i1), 0.04, n=8)
+            for i in range(i0, i1 + 1, 6):
+                t = thetas[i]
+                x, y = cx + r * math.cos(math.radians(t)), cy + r * math.sin(math.radians(t))
+                g.box(x - 0.03, x + 0.03, y - 0.03, y + 0.03, helix_z(t) + ph, helix_z(t) + RAIL_H)
     g.to_object("rampe_lisses", coll, M["metal"], smooth=True, weighted=False)
 
     g = Geo()  # bandeau lumineux le long de la rive extérieure
-    g.tube(ring(C.R_OUT + pw + 0.02, ph - 0.12), 0.05, n=8)
+    for i0, i1 in spans[True]:
+        g.tube(ring(C.R_OUT + pw + 0.02, ph - 0.12, i0, i1), 0.05, n=8)
     g.to_object("rampe_bandeau", coll, M["accent_line"], smooth=True, weighted=False)
+
+    spur(M, coll, ph, pw, t_slab)
 
     # noyau central
     top = C.ROOF_Z + 2.1

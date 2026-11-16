@@ -10,9 +10,8 @@ import math
 
 # ----------------------------------------------------------------- boucle
 FPS = 60
-LOOP = 12.0  # durée de la boucle (s)
-FRAMES = int(FPS * LOOP)  # 720 images
-N_CARS = 7  # voitures identiques qui se relaient : trajet complet = N_CARS * LOOP
+LOOP = 48.0  # durée de la boucle (s)
+FRAMES = int(FPS * LOOP)  # 2880 images
 
 # ----------------------------------------------------------------- voitures
 CAR_SCALE = 2.2  # les modèles de cars.py sont en « unités jouet »
@@ -125,6 +124,9 @@ PAINTS = [
     ("marine", "#27375e", 6),
 ]
 STYLES = ["mini", "sedan", "hatch"]
+# une partie des voitures garées prend un autre gabarit (tirage à part : le reste du plan ne change pas)
+EXTRA_STYLES = ["suv", "suv", "coupe", "coupe", "van", "pickup"]
+EXTRA_SHARE = 0.3
 
 # ----------------------------------------------------------------- vues (caméras)
 # cible, azimut (0 = vu depuis l'est, 90 = vu depuis le sud), élévation, distance, focale

@@ -4,3 +4,7 @@ blender/work
 *.blend1
 graphify-out/
 .DS_Store
+__pycache__/
+*.pyc
+# scènes Blender : 375 Mo avec la flotte, créées par render.py --blend
+blender/scenes/*.blend

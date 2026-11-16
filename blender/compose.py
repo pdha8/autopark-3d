@@ -100,25 +100,54 @@ def bloom(rgb, strength=0.55):
     return out
 
 
+def dark_frames(video, rgb_plate, k=4):
+    """Images de la vidéo qui ont des taches noires anormales : pixels presque noirs là où le
+    fond fixe est clair (ex. faisceaux de phares sortis en cônes noirs). Lecture au quart."""
+    H, W = rgb_plate.shape[:2]
+    h, w = H // k, W // k
+    plate_l = rgb_plate[: h * k, : w * k].reshape(h, k, w, k, 3).mean(axis=(1, 3)).max(axis=2) * 255
+    cmd = ["ffmpeg", "-v", "error", "-i", video, "-vf", f"scale={w}:{h}:flags=area", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    bad, n, size = [], 0, w * h * 3
+    while True:
+        b = p.stdout.read(size)
+        if len(b) < size:
+            break
+        lum = np.frombuffer(b, np.uint8).reshape(h, w, 3).max(axis=2)
+        if int(((lum < 10) & (plate_l > 45)).sum()) >= 12:
+            bad.append(n)
+        n += 1
+    p.wait()
+    return bad
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else sys.argv[1:]
     p = argparse.ArgumentParser()
     p.add_argument("--name", required=True)
     p.add_argument("--frames", default=None)
     p.add_argument("--png", default=None, help="écrire des PNG dans ce dossier au lieu de la vidéo")
-    p.add_argument("--crf", type=int, default=19)
+    p.add_argument("--crf", type=int, default=21)  # boucles de 48 s : vidéos plus légères, écart invisible sur ces images propres
     p.add_argument("--no-bloom", action="store_true")
     p.add_argument("--out", default=None)
+    p.add_argument("--purge", action="store_true", help="vidéo complète et vérifiée : supprimer les zones (plusieurs dizaines de Go)")
     a = p.parse_args(argv)
 
-    folder = a.name if os.path.isabs(a.name) else os.path.join(WORK, "render", a.name)
+    folder = a.name if os.path.isabs(a.name) else os.path.join(WORK, f"render-{int(C.LOOP)}s", a.name)
     man = json.load(open(os.path.join(folder, "manifest.json")))
     W, H, night, fe = man["width"], man["height"], man["night"], man["feather"]
     page = hex_rgb(C.PAGE_NIGHT if night else C.PAGE_DAY)
     plate = premult(read(os.path.join(folder, "plate.png")))
     assert plate.shape[:2] == (H, W), plate.shape
-    fa, fb = (int(v) for v in a.frames.split("-")) if a.frames else (0, man["frames"] - 1)
+    done = sorted(int(k) for k in man["zones"])
+    assert done, "aucune image rendue"
+    step = done[1] - done[0] if len(done) > 1 else 1  # aperçu : une image sur N
+    fa, fb = (int(v) for v in a.frames.split("-")) if a.frames else (done[0], done[-1])
+    frames = [f for f in done if fa <= f <= fb]
+    if not a.png and not a.frames and step == 1:
+        assert len(frames) == man["frames"], f"rendu incomplet : {len(frames)} images sur {man['frames']}"
     rng = np.random.default_rng(1)
+    fps = man["fps"] / step
 
     proc = None
     if a.png:
@@ -126,19 +155,29 @@ def main():
     else:
         os.makedirs(PUBLIC, exist_ok=True)
         dst = a.out or os.path.join(PUBLIC, f"{a.name}.mp4")
-        cmd = ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(man["fps"]), "-i", "-"]
+        cmd = ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(fps), "-i", "-"]
         cmd += ["-vf", "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=tv"]
-        cmd += ["-c:v", "libx264", "-preset", "slow", "-crf", str(a.crf), "-profile:v", "high", "-g", str(man["fps"]), "-bf", "2"]
+        cmd += ["-c:v", "libx264", "-preset", "slow", "-crf", str(a.crf), "-profile:v", "high", "-g", str(int(round(fps * 2))), "-bf", "2"]  # une image clé toutes les 2 s
         cmd += ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv", "-movflags", "+faststart", "-an", dst]
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
 
+    cache = {}  # zones déjà lues (une même zone sert à toutes les images où rien n'y bouge)
+
+    def zone(sig):
+        if sig not in cache:
+            if len(cache) > 600:
+                for k in list(cache)[:200]:
+                    del cache[k]
+            cache[sig] = premult(read(os.path.join(folder, "zones", f"{sig}.png")))
+        return cache[sig]
+
     t0 = time.time()
-    for f in range(fa, fb + 1):
+    for n, f in enumerate(frames):
         img = plate.copy()
-        for i, (x0, y0, x1, y1) in enumerate(man["zones"].get(str(f), [])):
-            z = premult(read(os.path.join(folder, "zones", f"{f:04d}_{i}.png")))
+        for x0, y0, x1, y1, sig in man["zones"][str(f)]:
+            z = zone(sig)
             h, w = y1 - y0, x1 - x0
-            assert z.shape[:2] == (h, w), (f, i, z.shape, (h, w))
+            assert z.shape[:2] == (h, w), (f, sig, z.shape, (h, w))
             # (y0, y1 comptés depuis le bas du cadre)
             top, bot = H - y1, H - y0
             m = feather_mask(h, w, fe, (top > 0, bot < H, x0 > 0, x1 < W))[:, :, None]
@@ -153,14 +192,35 @@ def main():
             out.write(os.path.join(a.png, f"{f:04d}.png"))
         else:
             proc.stdin.write(rgb.tobytes())
-        if (f - fa) % 60 == 59:
-            print(f"ASSEMBLAGE image {f} ({(time.time() - t0) / (f - fa + 1):.2f} s/image)", flush=True)
+        if n % 120 == 119:
+            print(f"ASSEMBLAGE image {f} ({(time.time() - t0) / (n + 1):.2f} s/image)", flush=True)
     if proc:
         proc.stdin.close()
         proc.wait()
         print("VIDEO", dst, os.path.getsize(dst), "octets", flush=True)
         # image fixe (affichée si la lecture automatique est bloquée)
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", dst, "-frames:v", "1", "-q:v", "3", dst[:-4] + ".jpg"])
+        if a.purge and step == 1 and not a.frames:
+            probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets", "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0", dst], capture_output=True, text=True)
+            if probe.stdout.strip() == str(man["frames"]):
+                # contrôle des taches noires : en cas de défaut, les zones restent (on pourra
+                # refaire seulement les images touchées)
+                try:
+                    bad = dark_frames(dst, plate[:, :, :3] + page[None, None, :] * (1 - plate[:, :, 3:4]))
+                except Exception as e:  # noqa: BLE001
+                    bad = None
+                    print("CONTROLE impossible :", e, flush=True)
+                if bad:
+                    print(f"ZONES conservées : {len(bad)} images avec des taches noires (images {bad[0]} à {bad[-1]})", flush=True)
+                elif bad is None:
+                    print("ZONES conservées : contrôle des taches noires impossible", flush=True)
+                else:
+                    import shutil
+
+                    shutil.rmtree(os.path.join(folder, "zones"))
+                    print("ZONES supprimées (vidéo complète :", man["frames"], "images, aucune tache noire)", flush=True)
+            else:
+                print("ZONES conservées : la vidéo compte", probe.stdout.strip(), "images au lieu de", man["frames"], flush=True)
     print(f"TERMINE en {(time.time() - t0) / 60:.1f} min", flush=True)
 
 

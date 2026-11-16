@@ -1,14 +1,18 @@
 // Étiquettes HTML calées sur les vidéos 3D : compteurs, état de la place suivie,
 // bulle de lecture de plaque… Les instants viennent de la scène Blender
 // (src/data/sync.json) : tout est synchronisé à l'image près avec la vidéo.
+// La vidéo montre toute une flotte : chaque entrée à la barrière a sa plaque, chaque
+// place où un véhicule se gare ou repart fait bouger les compteurs.
 
 import sync from '../data/sync.json';
 import { store, LOCKED } from '../core/store.js';
 import { $, $$, BAY_LABEL, inLoop } from '../core/util.js';
 
-const T = sync.loopTimes;
 const LOOP = sync.loop;
 const wrap = (t) => ((t % LOOP) + LOOP) % LOOP;
+/** Secondes écoulées depuis l'instant t0 de la boucle. */
+const since = (t, t0) => wrap(t - t0);
+const HERO_BAY = sync.bays.find((b) => b.id === sync.bay);
 
 /** Pose chaque étiquette [data-anchor] à sa position dans la maquette. */
 export function placeAnchors(section, view) {
@@ -22,11 +26,39 @@ export function placeAnchors(section, view) {
   return anchors;
 }
 
-/** État de la place suivie (toit) à l'instant t de la boucle. */
-export function bayState(t) {
-  if (inLoop(t, T.parked, T.bay_clear)) return 'occupied';
-  if (inLoop(t, T.bay_clear, T.reserved)) return 'available';
-  return 'reserved';
+/** État d'une place animée par la vidéo à l'instant t de la boucle. */
+export function bayState(bay, t) {
+  if (inLoop(t, bay.on, bay.off)) return 'occupied';
+  if (bay.reserved !== undefined && inLoop(t, bay.reserved, bay.on)) return 'reserved';
+  return 'available';
+}
+
+/** Dernière plaque lue à l'entrée, et depuis combien de secondes. */
+function lastEntry(t) {
+  let entry = sync.entries[0];
+  let age = Infinity;
+  for (const e of sync.entries) {
+    const a = since(t, e.t);
+    if (a < age) {
+      age = a;
+      entry = e;
+    }
+  }
+  return { entry, age };
+}
+
+/** Prochaine plaque à lire, et dans combien de secondes. */
+function nextEntry(t) {
+  let entry = sync.entries[0];
+  let wait = Infinity;
+  for (const e of sync.entries) {
+    const w = since(e.t, t);
+    if (w < wait) {
+      wait = w;
+      entry = e;
+    }
+  }
+  return { entry, wait };
 }
 
 function setChip(chip, label, state) {
@@ -49,18 +81,21 @@ export class HeroOverlay {
     this.chipState = $('#hero-bay-state');
     $('#hero-bay-id').textContent = sync.bay;
     this.toast = $('#hero-anpr');
-    $('#hero-anpr-plate').textContent = sync.plate;
+    this.plate = $('#hero-anpr-plate');
+    this._plate = null;
   }
 
   update(time) {
     const t = wrap(time);
-    const state = bayState(t);
-    // compteurs : état du parking + place suivie par la vidéo
+    // compteurs : état du parking + toutes les places où la vidéo montre un véhicule garé
     const c = store.counts();
-    const base = store.byId.get(sync.bay).status;
-    if (state !== base) {
-      c[base]--;
-      c[state]++;
+    for (const bay of sync.bays) {
+      const base = store.byId.get(bay.id).status;
+      const state = bayState(bay, t);
+      if (state !== base) {
+        c[base]--;
+        c[state]++;
+      }
     }
     for (const key of ['available', 'occupied', 'reserved', 'total']) {
       if (this.shown[key] === c[key]) continue;
@@ -75,8 +110,15 @@ export class HeroOverlay {
     }
     this.barOcc.style.width = `${(100 * c.occupied) / c.total}%`;
     this.barRes.style.width = `${(100 * c.reserved) / c.total}%`;
-    setChip(this.chip, this.chipState, state);
-    this.toast.classList.toggle('is-on', inLoop(t, T.flash, wrap(T.flash + 2.7)));
+    setChip(this.chip, this.chipState, bayState(HERO_BAY, t));
+    // plaque lue à l'entrée : celle du véhicule qui passe la barrière
+    const { entry, age } = lastEntry(t);
+    const on = age < 2.6;
+    if (on && entry.plate !== this._plate) {
+      this._plate = entry.plate;
+      this.plate.textContent = entry.plate;
+    }
+    this.toast.classList.toggle('is-on', on);
   }
 }
 
@@ -84,7 +126,7 @@ export class HeroOverlay {
 export class GateOverlay {
   constructor(section) {
     this.section = section;
-    const a = placeAnchors(section, 'gate');
+    this.anchors = placeAnchors(section, 'gate');
     this.bubble = $('#gate-bubble');
     this.plate = $('#gate-plate');
     this.status = $('#gate-status');
@@ -92,30 +134,50 @@ export class GateOverlay {
     this.scan = $('#gate-scan');
     this.exit = $('#gate-exit');
     this.scan.setAttribute('viewBox', '0 0 1280 776');
-    const line = this.scan.querySelector('line');
-    line.setAttribute('x1', a.anpr[0]);
-    line.setAttribute('y1', a.anpr[1] + 14);
-    line.setAttribute('x2', a.plate[0]);
-    line.setAttribute('y2', a.plate[1]);
+    this.line = this.scan.querySelector('line');
+    this.line.setAttribute('x1', this.anchors.anpr[0]);
+    this.line.setAttribute('y1', this.anchors.anpr[1] + 14);
     this._typed = -1;
+    this._read = null;
+    this._aim = null;
+  }
+
+  /** Vise la plaque d'un véhicule (réticule et trait de lecture). */
+  aim(entry) {
+    if (entry === this._aim) return;
+    this._aim = entry;
+    this.reticle.style.setProperty('--ax', entry.at[0]);
+    this.reticle.style.setProperty('--ay', entry.at[1]);
+    this.line.setAttribute('x2', entry.at[0]);
+    this.line.setAttribute('y2', entry.at[1]);
   }
 
   update(time) {
     const t = wrap(time);
-    const sinceFlash = wrap(t - T.flash); // secondes écoulées depuis le flash
-    const bubbleOn = sinceFlash < wrap(T.in_close - T.flash) + 0.5;
+    const { entry, age } = lastEntry(t); // plaque en cours d'affichage
+    const { entry: next, wait } = nextEntry(t); // prochain véhicule à lire
+    // la bulle reste jusqu'à ce que le véhicule ait passé la barrière
+    const bubbleOn = age < since(entry.close, entry.t) + 0.5;
     this.bubble.classList.toggle('is-on', bubbleOn);
+    if (entry !== this._read) {
+      this._read = entry;
+      this._typed = -1;
+    }
     // plaque tapée caractère par caractère, juste après le flash
-    const n = bubbleOn ? Math.min(sync.plate.length, Math.floor(sinceFlash / 0.05) + 1) : 0;
+    const n = bubbleOn ? Math.min(entry.plate.length, Math.floor(age / 0.05) + 1) : 0;
     if (n !== this._typed) {
       this._typed = n;
-      const done = n >= sync.plate.length;
-      this.plate.innerHTML = sync.plate.slice(0, n) + (done || !bubbleOn ? '' : '<span class="caret"></span>');
+      const done = n >= entry.plate.length;
+      this.plate.innerHTML = entry.plate.slice(0, n) + (done || !bubbleOn ? '' : '<span class="caret"></span>');
     }
-    this.status.classList.toggle('is-on', bubbleOn && sinceFlash > 0.62);
-    this.reticle.classList.toggle('is-on', inLoop(t, wrap(T.stop + 0.05), wrap(T.flash + 0.75)));
-    this.scan.classList.toggle('is-on', inLoop(t, wrap(T.flash - 0.12), wrap(T.flash + 0.55)));
-    this.exit.classList.toggle('is-on', inLoop(t, wrap(T.exit_gate - 0.4), wrap(T.out_close + 1.1)));
+    this.status.classList.toggle('is-on', bubbleOn && age > 0.62);
+    // réticule : sur la plaque dès que le véhicule s'arrête (ou juste avant la lecture s'il passe au pas)
+    const lead = next.stop === null ? 0.5 : since(next.t, next.stop) - 0.05;
+    const aiming = wait < lead;
+    this.aim(aiming ? next : entry);
+    this.reticle.classList.toggle('is-on', aiming || age < 0.75);
+    this.scan.classList.toggle('is-on', wait < 0.12 || age < 0.55);
+    this.exit.classList.toggle('is-on', sync.exits.some((e) => inLoop(t, wrap(e.gate - 0.4), wrap(e.close + 1.1))));
   }
 }
 
@@ -138,7 +200,7 @@ export class RoofOverlay {
   }
 
   update(time) {
-    const state = bayState(wrap(time));
+    const state = bayState(HERO_BAY, wrap(time));
     setChip(this.chip, this.chipState, state);
     this.outline.style.setProperty('--c', `var(--${state})`);
     this.outline.style.opacity = state === 'occupied' ? 0 : 1;
