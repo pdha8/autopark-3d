@@ -5,6 +5,7 @@ vivante, lecture de plaque à l'entrée, guidage jusqu'à la place, explorateur 
 niveaux où chaque place est cliquable, réservation et paiement simulés, tableau de
 bord et API.
 
+https://pdha8.github.io/autopark-3d/
 C'est la refonte du prototype « Parking 3D » (dossier `3D auto Parking`, WebGL
 temps réel) : même structure et mêmes textes, mais la 3D est maintenant **rendue
 dans Blender (Cycles, carte graphique)** puis lue sous forme de vidéos en boucle
