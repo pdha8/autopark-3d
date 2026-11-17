@@ -92,7 +92,7 @@ export class Dashboard {
     // maintenant
     svg.append(el('line', { x1: x(hour), x2: x(hour), y1: T, y2: y(0), stroke: 'var(--selected)', 'stroke-width': 1, 'stroke-dasharray': '3 4', 'vector-effect': 'non-scaling-stroke' }));
     svg.append(el('circle', { cx: x(hour), cy: y(series[hour]), r: 4.5, fill: 'var(--selected)' }));
-    svg.append(el('text', { x: Math.min(W - 70, x(hour) + 8), y: T + 10, style: 'fill: var(--selected)' }, 'maintenant'));
+    svg.append(el('text', { x: Math.min(W - 70, x(hour) + 8), y: T + 10, style: 'fill: var(--selected-ink)' }, 'maintenant'));
   }
 
   _flow(hour) {

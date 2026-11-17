@@ -230,7 +230,7 @@ export class RoofOverlay {
     const at = (h) => Math.max(0.05, Math.min(0.98, hourly[(now.getHours() + h) % 24] * weekend));
     const p1 = Math.round(at(1) * 100);
     const p2 = Math.round(at(2) * 100);
-    const color = p1 > 85 ? 'var(--occupied)' : p1 > 65 ? 'var(--selected)' : 'var(--available)';
+    const color = p1 > 85 ? 'var(--occupied)' : p1 > 65 ? 'var(--selected-ink)' : 'var(--available)';
     const trend = p1 > p2 ? 'En hausse' : p1 < p2 - 5 ? 'En baisse' : 'Stable';
     const box = $('#pred-value').closest('.predict');
     box.style.setProperty('--pc', color);

@@ -4,7 +4,7 @@
 // <canvas> selon l'état en direct du parking.
 
 import { store, LOCKED } from '../core/store.js';
-import { $, $$, STATUS_LABEL, TYPE_LABEL, hhmm } from '../core/util.js';
+import { $, $$, STATUS_LABEL, TYPE_LABEL, hhmm, keyTabs, markTabs } from '../core/util.js';
 
 const BASE = `${import.meta.env.BASE_URL}img/levels/`;
 const FEED_LABEL = { arrival: 'Arrivée', departure: 'Départ', booking: 'Réservation' };
@@ -45,6 +45,17 @@ export class Explorer {
       const s = this._pick(e);
       if (s) this.select(s);
     });
+    // au clavier : flèches de place en place, Entrée ou Espace pour sélectionner
+    this.cursor = null;
+    keyTabs($('#levels'));
+    this.canvas.addEventListener('keydown', (e) => this._key(e));
+    this.canvas.addEventListener('focus', () => {
+      if (!this.meta) return;
+      const spots = this.meta.levels[this.level].spots;
+      const m = spots.find((o) => o.id === this.cursor) || spots.find((o) => o.id === this.selected?.id) || spots[0];
+      this._setCursor(m);
+    });
+    this.canvas.addEventListener('blur', () => this._setHover(null));
     $('#reserve-btn').addEventListener('click', () => this.selected && this.onReserve(this.selected));
     $('#search-input').addEventListener('input', (e) => this._search(e.target.value));
     $('#search-results').addEventListener('click', (e) => {
@@ -97,6 +108,13 @@ export class Explorer {
   setLevel(level) {
     this.level = level;
     $$('#levels button').forEach((b) => b.classList.toggle('is-active', +b.dataset.level === level));
+    const tab = $(`#lvl-tab-${level}`);
+    if (tab) {
+      markTabs($('#levels'), tab);
+      $('#level-map').setAttribute('aria-labelledby', tab.id);
+    }
+    this.canvas.setAttribute('aria-label', `Plan du niveau P${level}`);
+    this.cursor = null;
     if (this.meta) this._images(level, this.theme);
     this._setHover(null);
     this._stats();
@@ -129,7 +147,7 @@ export class Explorer {
     $('#spot-id').textContent = s.id;
     const badge = $('#spot-status');
     badge.textContent = mine ? 'Votre place' : STATUS_LABEL[s.status];
-    badge.style.setProperty('--c', mine ? 'var(--selected)' : `var(--${s.status})`);
+    badge.style.setProperty('--c', mine ? 'var(--selected-ink)' : `var(--${s.status})`);
     $('#spot-level').textContent = `P${s.level}${s.level === 3 ? ' · toit' : ''}`;
     $('#spot-type').textContent = TYPE_LABEL[s.type];
     $('#spot-plate').textContent = s.plate || '—';
@@ -178,6 +196,73 @@ export class Explorer {
     this.dirty = true;
   }
 
+  // ------------------------------------------------------------ clavier
+  _centroid(m) {
+    const n = m.poly.length;
+    return [m.poly.reduce((a, p) => a + p[0], 0) / n, m.poly.reduce((a, p) => a + p[1], 0) / n];
+  }
+
+  _key(e) {
+    if (!this.meta) return;
+    const dirs = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] };
+    if (e.key in dirs) {
+      this._step(...dirs[e.key]);
+    } else if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      const s = this.cursor && store.byId.get(this.cursor);
+      if (!s) return;
+      this.select(s);
+      const can = !$('#reserve-btn').disabled;
+      this._say(`${s.id} sélectionnée.${can ? ' Tabulation pour la réserver.' : ''}`);
+    } else if (e.key === 'Home' || e.key === 'End') {
+      const spots = this.meta.levels[this.level].spots;
+      this._setCursor(e.key === 'Home' ? spots[0] : spots[spots.length - 1]);
+    } else return;
+    e.preventDefault();
+    e.stopPropagation(); // ces touches changent aussi de section : pas ici
+  }
+
+  /** Place la plus proche dans la direction (dx, dy) : d'abord dans l'axe, puis la plus alignée. */
+  _step(dx, dy) {
+    const spots = this.meta.levels[this.level].spots;
+    const cur = spots.find((m) => m.id === this.cursor);
+    if (!cur) return this._setCursor(spots[0]);
+    const [cx, cy] = this._centroid(cur);
+    let best = null;
+    let score = Infinity;
+    for (const m of spots) {
+      if (m === cur) continue;
+      const [x, y] = this._centroid(m);
+      const along = (x - cx) * dx + (y - cy) * dy;
+      if (along <= 4) continue;
+      const across = Math.abs((x - cx) * dy - (y - cy) * dx);
+      const sc = along + across * 2.5;
+      if (sc < score) {
+        score = sc;
+        best = m;
+      }
+    }
+    if (best) this._setCursor(best);
+  }
+
+  _setCursor(m) {
+    if (!m) return;
+    this.cursor = m.id;
+    const s = store.byId.get(m.id);
+    this._setHover(s);
+    // la bulle d'information se place sur la place choisie
+    const r = this.canvas.getBoundingClientRect();
+    const host = this.canvas.parentElement.getBoundingClientRect();
+    const [x, y] = this._centroid(m);
+    this.tip.style.left = `${r.left - host.left + (x / this.canvas.width) * r.width}px`;
+    this.tip.style.top = `${r.top - host.top + (y / this.canvas.height) * r.height}px`;
+    const type = s.type !== 'std' ? `, ${TYPE_LABEL[s.type]}` : '';
+    this._say(`${s.id}, ${s.mine ? 'votre place' : STATUS_LABEL[s.status].toLowerCase()}${type}${s.plate ? `, plaque ${s.plate}` : ''}`);
+  }
+
+  _say(text) {
+    $('#plan-live').textContent = text;
+  }
+
   // ------------------------------------------------------------ pointeur
   _point(e) {
     const r = this.canvas.getBoundingClientRect();
@@ -221,7 +306,7 @@ export class Explorer {
       $('#tip-id').textContent = s.id + (s.type !== 'std' ? ` · ${TYPE_LABEL[s.type]}` : '');
       const st = $('#tip-status');
       st.textContent = s.mine ? 'Votre place' : STATUS_LABEL[s.status];
-      st.style.setProperty('--c', s.mine ? 'var(--selected)' : `var(--${s.status})`);
+      st.style.setProperty('--c', s.mine ? 'var(--selected-ink)' : `var(--${s.status})`);
       $('#tip-plate').textContent = s.plate || '';
     }
     this.dirty = true;

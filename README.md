@@ -149,6 +149,10 @@ sont de vraies instances pour Cycles, et chaque rendu de zone démarre en une de
 image assemblée à la même image rendue en entier : l'écart reste au niveau du bruit.
 
 La vue générale est rendue en 2640 × 1440, les deux vues rapprochées en 2200 × 1200.
+Sur un téléphone debout, seule une bande verticale de chaque vidéo est visible : le site lit
+alors des versions recadrées sur cette bande (`*_m.mp4`, trois fois plus légères, aussi nettes),
+et ne précharge qu'une vidéo à la fois : celle affichée, puis la section suivante, la
+précédente et l'autre éclairage (rien de plus en économie de données ou en 3G).
 
 Le rendu se fait par **morceaux de 240 images**, chacun dans un processus Blender neuf :
 dans un seul processus, les données que Cycles garde d'une image à l'autre finissent par
@@ -207,6 +211,12 @@ KEEP_ZONES=1 bash blender/render_all.sh
 
 ```bash
 bash blender/fix_all.sh
+```
+
+Puis les versions téléphone (recadrage et encodage, une minute environ) :
+
+```bash
+bash scripts/phone_videos.sh
 ```
 
 Une image de contrôle complète :

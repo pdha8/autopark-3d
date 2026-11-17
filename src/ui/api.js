@@ -2,7 +2,7 @@
 // dans le navigateur. Rien n'est envoyé sur le réseau.
 
 import { store, randomPlate, RATE } from '../core/store.js';
-import { $, $$, download, pad2 } from '../core/util.js';
+import { $, $$, download, keyTabs, markTabs, pad2 } from '../core/util.js';
 import { notify } from './booking.js';
 
 const ENDPOINTS = [
@@ -13,7 +13,7 @@ const ENDPOINTS = [
   { id: 'stats', method: 'GET', url: '/stats', desc: "Statistiques globales : taux d'occupation, CA, flux" },
   { id: 'anpr', method: 'POST', url: '/anpr/scan', desc: "Soumet une plaque à l'ANPR · Body : { plate, cameraId }" },
 ];
-const COLORS = { GET: 'var(--reserved)', POST: 'var(--available)', DEL: 'var(--occupied)', PUT: 'var(--selected)' };
+const COLORS = { GET: 'var(--reserved)', POST: 'var(--available)', DEL: 'var(--occupied)', PUT: 'var(--selected-ink)' };
 
 const view = (s) => ({ id: s.id, level: s.level, type: s.type, status: s.status, plate: s.plate });
 
@@ -72,7 +72,9 @@ export class ApiPanel {
       if (!b) return;
       $$('#api-tabs button').forEach((x) => x.classList.toggle('is-active', x === b));
       $$('.tabpane').forEach((p) => p.classList.toggle('is-active', p.dataset.pane === b.dataset.tab));
+      markTabs($('#api-tabs'), b);
     });
+    keyTabs($('#api-tabs'));
     $('#log-clear').addEventListener('click', () => ($('#api-log').innerHTML = '<p class="log__empty">Aucune requête — testez un endpoint</p>'));
     $('#webhook-test').addEventListener('click', () => this.webhook());
     let shown = false;

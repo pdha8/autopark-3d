@@ -57,19 +57,33 @@ void api;
 function fit() {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  const mobile = w / h < 0.85;
+  const fitU = Math.min(w / 1280, h / 776); // maquette entière dans la fenêtre
+  const portrait = w / h < 0.85;
+  // Zoom fort, fenêtre basse, téléphone couché : la maquette d'ordinateur deviendrait trop petite
+  // pour son texte. La scène garde son cadrage en haut, le texte passe dessous en colonne (comme
+  // sur téléphone) et la section défile.
+  const compact = !portrait && fitU < 0.7;
+  const mobile = portrait || compact;
   document.body.classList.toggle('is-mobile', mobile);
-  const u = mobile ? w / 430 : Math.min(w / 1280, h / 776);
+  document.body.classList.toggle('is-compact', compact);
+  // téléphone : 1 u = 1/430 de la largeur ; plafonné sur tablette (sinon tout grossit de 80 %)
+  const u = compact ? Math.min(w / 430, 1.25) : mobile ? Math.min(w / 430, 1.3) : fitU;
   root.style.setProperty('--u', `${u}px`);
-  for (const { el, name } of scenes.values()) {
+  // téléphone debout : vidéos recadrées sur ce que l'écran montre (bien plus légères)
+  const phone = mobile && !compact && w <= 430 * 1.3;
+  for (const { el, name, scene } of scenes.values()) {
+    scene.setKind(phone ? 'phone' : 'full');
     const sc = $('.scene', el);
-    if (!mobile) {
-      sc.style.setProperty('--su', `${u}px`);
+    if (!mobile || compact) {
+      // compact : la scène entière dans l'espace sous la barre du haut (60 u)
+      const top = compact ? 60 * u : 0;
+      sc.style.setProperty('--su', `${compact ? Math.min(w / 1280, (h - top) / 776) : fitU}px`);
       sc.style.setProperty('--sx', '0px');
-      sc.style.setProperty('--sy', '0px');
+      sc.style.setProperty('--sy', `${top / 2}px`);
     } else {
       const [fx, fy, span, py] = MOBILE_FOCUS[name];
-      const su = w / span;
+      // plafonné comme le texte : sur tablette on voit plus de décor autour du sujet, sans zoomer
+      const su = Math.min(w, 430 * 1.3) / span;
       sc.style.setProperty('--su', `${su}px`);
       sc.style.setProperty('--sx', `${-(fx - 640) * su}px`);
       sc.style.setProperty('--sy', `${h * py - h / 2 - (fy - 388) * su}px`);
@@ -96,10 +110,46 @@ function applyTheme(next, announce = true) {
   if (announce) notify(theme === 'night' ? 'Mode nuit activé' : 'Mode jour activé');
 }
 
+// ------------------------------------------------------------ animation
+// La maquette tourne en boucle : un bouton la met en pause (et la reprend). Si le système
+// demande moins de mouvement, elle démarre en pause, sans transitions ni effet de profondeur.
+const MOTION_KEY = 'autopark3d.motion';
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let motionPaused = reduceMotion.matches;
+try {
+  const saved = localStorage.getItem(MOTION_KEY);
+  if (saved) motionPaused = saved === 'paused';
+} catch {
+  /* stockage indisponible */
+}
+
+function applyMotion(paused, announce = true) {
+  motionPaused = paused;
+  try {
+    localStorage.setItem(MOTION_KEY, paused ? 'paused' : 'play');
+  } catch {
+    /* stockage indisponible */
+  }
+  const b = $('#motion-btn');
+  b.classList.toggle('is-paused', paused);
+  b.setAttribute('aria-label', paused ? "Reprendre l'animation" : "Mettre l'animation en pause");
+  $('#motion-label').textContent = paused ? 'Lecture' : 'Pause';
+  const cur = sections ? scenes.get(sections.index) : null;
+  if (cur && cur.scene.variant) {
+    if (paused) cur.scene.pause();
+    else cur.scene.play();
+  }
+  if (announce) notify(paused ? 'Animation en pause' : 'Animation reprise');
+}
+
 // ------------------------------------------------------------ sections
 function reveal(i, delay = 0) {
   const els = $$('[data-reveal]', secEls[i]);
   gsap.killTweensOf(els);
+  if (reduceMotion.matches) {
+    gsap.set(els, { opacity: 1, y: 0 });
+    return;
+  }
   gsap.fromTo(els, { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.8, stagger: 0.075, delay, ease: 'power3.out', overwrite: true });
 }
 
@@ -113,7 +163,7 @@ async function activate(i) {
   const s = scenes.get(i);
   if (!s) return;
   if (s.scene.variant !== theme) await s.scene.setVariant(theme);
-  s.scene.play();
+  if (!motionPaused) s.scene.play();
   s.el.classList.add('is-live');
 }
 
@@ -133,10 +183,28 @@ function onSectionDone(i, prev) {
   // précharge les vidéos des sections voisines
   for (const k of [i + 1, i - 1]) {
     const n = scenes.get(k);
-    if (n && !n.scene.variant) n.scene.setVariant(theme);
+    if (n && !n.scene.variant) n.scene.setVariant(theme, 'metadata'); // juste l'en-tête : la suite viendra après
   }
-  scenes.get(i)?.scene.preloadOthers();
   history.replaceState(null, '', i ? `#${secEls[i].id}` : location.pathname + location.search);
+}
+
+// Préchargement : la vidéo affichée d'abord, puis une seule à la fois (section suivante,
+// section précédente, autre éclairage). Rien de plus en économie de données ou en 2G / 3G.
+const connection = navigator.connection;
+const lean = () => !!connection && (connection.saveData || /^(slow-2g|2g|3g)$/.test(connection.effectiveType || ''));
+const buffered = (el, sec) => !!el && el.duration > 0 && el.buffered.length > 0 && el.buffered.end(el.buffered.length - 1) >= Math.min(el.duration - 0.5, sec);
+
+function prefetchTick() {
+  if (!sections || lean()) return;
+  const i = sections.index;
+  const cur = scenes.get(i);
+  if (cur?.scene.active && !buffered(cur.scene.active, 24)) return;
+  const other = theme === 'night' ? 'day' : 'night';
+  for (const [k, v] of [[i + 1, theme], [i - 1, theme], [i, other]]) {
+    const s = scenes.get(k);
+    if (!s) continue;
+    if (!buffered(s.scene.get(v, 'auto'), 12)) return;
+  }
 }
 
 function guide(spotId) {
@@ -206,6 +274,23 @@ function bind() {
     }
   });
   $('#theme-btn').addEventListener('click', () => applyTheme(theme === 'night' ? 'day' : 'night'));
+  $('#motion-btn').addEventListener('click', () => applyMotion(!motionPaused));
+  // lien d'évitement : focus sur le titre de la section affichée
+  $('#skip-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    const sec = secEls[sections.index];
+    const target = sec.querySelector('h1, h2') || sec;
+    target.setAttribute('tabindex', '-1');
+    target.focus({ preventScroll: true });
+  });
+  // au clavier, la vue suit le focus d'une section à l'autre
+  $('#sections').addEventListener('focusin', (e) => {
+    const sec = e.target.closest('#sections > section');
+    const i = secEls.indexOf(sec);
+    if (i < 0 || !sections.enabled || i === sections.index || sections.animating) return;
+    tourStop();
+    sections.goTo(i, true);
+  });
   $('#live-btn').addEventListener('click', (e) => {
     store.live = !store.live;
     e.currentTarget.classList.toggle('is-paused', !store.live);
@@ -221,7 +306,10 @@ function bind() {
     if (!b) return;
     const admin = b.dataset.mode === 'admin';
     document.body.classList.toggle('is-admin', admin);
-    $$('#mode-switch button').forEach((x) => x.classList.toggle('is-active', x === b));
+    $$('#mode-switch button').forEach((x) => {
+      x.classList.toggle('is-active', x === b);
+      x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+    });
     notify(admin ? 'Mode administrateur' : 'Mode utilisateur');
   });
   $('#btn-sim-in').addEventListener('click', () => {
@@ -254,7 +342,7 @@ window.addEventListener('pointermove', (e) => {
 });
 
 function parallax(dt, cur) {
-  if (!cur || document.body.classList.contains('is-mobile')) return;
+  if (!cur || document.body.classList.contains('is-mobile') || reduceMotion.matches || motionPaused) return;
   const k = 1 - Math.exp(-dt * 3.2);
   pointer.cx += (pointer.x - pointer.cx) * k;
   pointer.cy += (pointer.y - pointer.cy) * k;
@@ -281,6 +369,7 @@ function loop() {
     if (second >= 1) {
       second = 0;
       booking.tick();
+      prefetchTick();
       const c = store.counts();
       const rate = (c.occupied + c.reserved) / c.total;
       if (rate >= 0.9) alertBanner(`Parking presque plein — ${c.available} places restantes`, 'danger', 'full');
@@ -293,9 +382,10 @@ function loop() {
 
 async function boot() {
   bind();
-  sections = new Sections({ container: $('#sections'), count: secEls.length, onStart: onSection, onComplete: onSectionDone, locked: modalOpen });
+  sections = new Sections({ container: $('#sections'), count: secEls.length, onStart: onSection, onComplete: onSectionDone, locked: modalOpen, instant: () => reduceMotion.matches });
   fit();
   applyTheme(theme, false);
+  applyMotion(motionPaused, false);
   secEls.forEach((_, i) => hide(i));
 
   const hero = scenes.get(0);

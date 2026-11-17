@@ -14,7 +14,8 @@ body.is-mobile .nav {
 body.is-mobile .nav__links,
 body.is-mobile .dots,
 body.is-mobile #live-btn,
-body.is-mobile #theme-label {
+body.is-mobile #theme-label,
+body.is-mobile #motion-label {
   display: none;
 }
 
@@ -59,11 +60,11 @@ body.is-mobile .stats {
 }
 
 body.is-mobile .stat b {
-  font-size: calc(var(--u) * 24);
+  font-size: var(--t-xl);
 }
 
 body.is-mobile .stat span {
-  font-size: calc(var(--u) * 8);
+  font-size: var(--t-label);
   letter-spacing: 0.12em;
 }
 
@@ -78,13 +79,13 @@ body.is-mobile .copy {
 }
 
 body.is-mobile .hero-copy .title {
-  font-size: calc(var(--u) * 66);
+  font-size: var(--t-title-m);
 }
 
 body.is-mobile .hero-copy .lead,
 body.is-mobile .copy .lead {
   max-width: none;
-  font-size: calc(var(--u) * 14);
+  font-size: var(--t-body);
 }
 
 body.is-mobile .legend {
@@ -98,7 +99,7 @@ body.is-mobile .actions .btn {
 
 body.is-mobile .copy .h2 {
   margin: calc(var(--u) * 10) 0 calc(var(--u) * 12);
-  font-size: calc(var(--u) * 44);
+  font-size: var(--t-h2-m);
 }
 
 body.is-mobile .facts {
@@ -108,7 +109,7 @@ body.is-mobile .facts {
 }
 
 body.is-mobile .facts b {
-  font-size: calc(var(--u) * 28);
+  font-size: var(--t-xl);
 }
 
 body.is-mobile .panel--smart {
@@ -223,6 +224,175 @@ body.is-mobile .alert {
   max-width: calc(100vw - var(--u) * 24);
   white-space: normal;
   text-align: center;
+}
+
+/* ------------------------------------------------------------ mode compact
+   Zoom fort, fenêtre basse ou téléphone couché (body.is-compact, voir fit() dans main.js) :
+   la scène 3D garde son cadrage d'ordinateur et remplit le premier écran ; le texte vient
+   dessous, en colonne, et la section défile (molette, doigt, clavier : sections.js). */
+body.is-compact .sec[data-scene] {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+body.is-compact .sec[data-scene] .ui {
+  position: relative;
+  display: flow-root; /* la marge du texte ne déborde pas sur le bloc (sinon les compteurs descendent) */
+  height: auto;
+  min-height: 100%;
+}
+
+/* le texte défile sous la barre du haut : fond plein derrière les boutons */
+body.is-compact .nav {
+  background: linear-gradient(var(--bg) 72%, transparent);
+}
+
+body.is-compact .sec[data-scene]::after {
+  inset: 70% 0 0 0;
+  background: linear-gradient(to bottom, transparent, var(--bg) 55%);
+}
+
+body.is-compact .hero-copy,
+body.is-compact .copy {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  max-width: 36em;
+  margin: 86vh auto 0;
+  margin: 86dvh auto 0;
+  padding: 0 calc(var(--u) * 20) calc(var(--u) * 40);
+}
+
+/* accueil : les compteurs passent sous la scène, avant le titre */
+body.is-compact .stats {
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  max-width: 36em;
+  margin: 86vh auto 0;
+  margin: 86dvh auto 0;
+}
+
+body.is-compact .stats ~ .hero-copy {
+  margin-top: calc(var(--u) * 26);
+}
+
+/* ------------------------------------------------------------ tablette (et écrans compacts larges)
+   La colonne du téléphone, en plus large : le plan des niveaux sur toute la largeur, les
+   panneaux et les graphiques sur deux colonnes, les indicateurs sur une ligne. */
+@media (min-width: 600px) {
+  body.is-mobile .explore {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: calc(var(--u) * 14);
+    align-items: start;
+  }
+
+  body.is-mobile .explore__map {
+    grid-column: 1 / -1;
+  }
+
+  body.is-mobile .charts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: calc(var(--u) * 12);
+  }
+
+  body.is-mobile .charts .chart {
+    grid-column: auto;
+  }
+
+  body.is-mobile .charts .chart--wide {
+    grid-column: 1 / -1;
+  }
+
+  body.is-mobile .modal__box,
+  body.is-mobile .modal__box--wide {
+    max-width: 34rem;
+  }
+}
+
+/* indicateurs sur une ligne quand leurs libellés tiennent */
+@media (min-width: 900px) {
+  body.is-mobile .kpis {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ------------------------------------------------------------ écrans tactiles
+   Toutes les commandes font au moins 44 x 44 px (WCAG 2.5.5), sur téléphone comme sur
+   tablette (dont la mise en page d'ordinateur, tablette couchée). Les étiquettes posées sur
+   la maquette 3D gardent leur taille : leurs fonctions existent aussi en grand ailleurs. */
+@media (pointer: coarse) {
+  .brand,
+  .nav__links a,
+  .pill,
+  .iconbtn,
+  .btn,
+  .input,
+  .mode button,
+  .levels button,
+  .tabs button,
+  .results button,
+  .durations button,
+  .checks label {
+    min-height: 44px;
+  }
+
+  .nav__links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav__links a,
+  .iconbtn,
+  .modal__close {
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .modal__close {
+    min-height: 44px;
+  }
+
+  /* repères de section : le point reste petit, la zone à toucher fait 44 px */
+  .dots {
+    gap: 0;
+    right: calc(50% - var(--u) * 618 - 17px);
+  }
+
+  .dots button,
+  .dots button.is-active {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .dots button::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: calc(var(--u) * 10);
+    height: calc(var(--u) * 10);
+    border: 1px solid var(--faint);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .dots button.is-active::before {
+    background: var(--kicker);
+    border-color: var(--kicker);
+    box-shadow: var(--glow);
+    transform: translate(-50%, -50%) scale(1.25);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

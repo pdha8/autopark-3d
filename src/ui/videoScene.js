@@ -4,6 +4,11 @@
 const HAS_RVFC = typeof HTMLVideoElement !== 'undefined' && 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
 export const VARIANTS = ['night', 'day'];
 
+// Téléphone debout : seule une bande verticale de la vidéo est visible (autour du sujet, voir
+// MOBILE_FOCUS dans main.js). Les vidéos *_m.mp4 ne contiennent que cette bande, marge comprise,
+// à pleine résolution : [début, largeur] en fraction de la largeur de la vidéo complète.
+const PHONE_CROP = { hero: [0.28485, 0.56667], gate: [0.53182, 0.35636], roof: [0.41727, 0.38182] };
+
 function once(el, type) {
   return new Promise((resolve) => el.addEventListener(type, resolve, { once: true }));
 }
@@ -15,6 +20,7 @@ export class VideoScene {
     this.name = name;
     this.videos = new Map();
     this.variant = null;
+    this.kind = 'full'; // 'full' ou 'phone' (vidéo recadrée)
     this.playing = false;
     this.frameTime = null; // instant de l'image réellement affichée (requestVideoFrameCallback)
     this._switch = 0;
@@ -26,7 +32,8 @@ export class VideoScene {
   }
 
   url(variant, ext = 'mp4') {
-    return `${import.meta.env.BASE_URL}video/${this.name}_${variant}.${ext}`;
+    const m = this.kind === 'phone' && PHONE_CROP[this.name] ? '_m' : '';
+    return `${import.meta.env.BASE_URL}video/${this.name}_${variant}${m}.${ext}`;
   }
 
   /** Crée (ou renvoie) l'élément vidéo d'une variante. */
@@ -46,6 +53,7 @@ export class VideoScene {
       el.preload = preload;
       el.poster = this.url(variant, 'jpg'); // image fixe si la lecture automatique est bloquée
       el.src = this.url(variant);
+      this._place(el);
       this.root.appendChild(el);
       this.videos.set(variant, el);
       if (HAS_RVFC) {
@@ -59,6 +67,35 @@ export class VideoScene {
       el.preload = 'auto';
     }
     return el;
+  }
+
+  /** Vidéo recadrée : elle n'occupe que sa bande dans le cadre de la scène. */
+  _place(el) {
+    const c = this.kind === 'phone' ? PHONE_CROP[this.name] : null;
+    el.style.left = c ? `${(c[0] * 100).toFixed(3)}%` : '';
+    el.style.width = c ? `${(c[1] * 100).toFixed(3)}%` : '';
+  }
+
+  /** Change de jeu de vidéos (téléphone debout ou non) en gardant l'instant de lecture. */
+  setKind(kind) {
+    if (kind === this.kind) return;
+    this.kind = kind;
+    this.frameTime = null;
+    for (const [variant, el] of this.videos) {
+      const t = el.currentTime;
+      const play = !el.paused;
+      el.addEventListener(
+        'loadedmetadata',
+        () => {
+          el.currentTime = t;
+          if (play) el.play().catch(() => {});
+        },
+        { once: true },
+      );
+      this._place(el);
+      el.poster = this.url(variant, 'jpg');
+      el.src = this.url(variant);
+    }
   }
 
   get active() {
@@ -93,11 +130,11 @@ export class VideoScene {
     ]);
   }
 
-  async setVariant(variant) {
+  async setVariant(variant, preload = 'auto') {
     if (variant === this.variant) return;
     const id = ++this._switch;
     const cur = this.active;
-    const next = this.get(variant);
+    const next = this.get(variant, preload);
     if (!cur) {
       this.variant = variant;
       next.classList.add('is-active');
@@ -134,8 +171,4 @@ export class VideoScene {
     this.active?.pause();
   }
 
-  /** Précharge l'autre éclairage (bascule jour / nuit instantanée). */
-  preloadOthers() {
-    for (const v of VARIANTS) if (v !== this.variant) this.get(v, 'auto');
-  }
 }

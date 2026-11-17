@@ -9,6 +9,7 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   </head>
   <body>
+    <a class="skip-link" id="skip-link" href="#sections">Aller au contenu</a>
     <!-- icônes -->
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
       <defs>
@@ -19,6 +20,7 @@
         <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16" /><path d="M8 16v-4M12 16V8M16 16v-6" /></symbol>
         <symbol id="i-api" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M15 7l5 5-5 5M13.5 5l-3 14" /></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" /></symbol>
+        <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13" /></symbol>
         <symbol id="i-car" viewBox="0 0 24 24"><path d="M4.5 16.5v-4l1.7-4.4h11.6l1.7 4.4v4M4.5 12.5h15" /><circle cx="7.8" cy="16.6" r="1.7" /><circle cx="16.2" cy="16.6" r="1.7" /></symbol>
         <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 2.8 5.5 13.4h5.6l-.9 7.8 8.3-11h-5.9z" /></symbol>
         <symbol id="i-pmr" viewBox="0 0 24 24"><circle cx="10.2" cy="4.6" r="1.6" /><path d="M10.2 7.8v6h5l2.6 4.6M10.2 10.4h4.4" /><path d="M8 11.6a5 5 0 1 0 6.6 6" /></symbol>
@@ -60,9 +62,14 @@
       </nav>
       <div class="nav__tools">
         <button class="pill pill--live" id="live-btn" type="button" title="Cliquez pour mettre la simulation en pause"><i class="dot"></i><span>Live</span></button>
+        <button class="iconbtn" id="motion-btn" type="button" aria-label="Mettre l'animation en pause">
+          <svg class="ico ico--pause" aria-hidden="true" focusable="false"><use href="#i-pause" /></svg>
+          <svg class="ico ico--play" aria-hidden="true" focusable="false"><use href="#i-play" /></svg>
+          <span id="motion-label">Pause</span>
+        </button>
         <button class="iconbtn" id="theme-btn" type="button" aria-label="Passer en mode jour">
-          <svg class="ico ico--moon"><use href="#i-moon" /></svg>
-          <svg class="ico ico--sun"><use href="#i-sun" /></svg>
+          <svg class="ico ico--moon" aria-hidden="true" focusable="false"><use href="#i-moon" /></svg>
+          <svg class="ico ico--sun" aria-hidden="true" focusable="false"><use href="#i-sun" /></svg>
           <span id="theme-label">Nuit</span>
         </button>
         <button class="btn btn--primary btn--sm" type="button" data-action="reserve-best">Réserver</button>
@@ -84,9 +91,9 @@
             <button class="tag tag--level" type="button" data-anchor="P0" data-level="0" title="Explorer le niveau P0">P0</button>
             <button class="chip chip--bay" type="button" id="hero-bay" data-anchor="bay" data-spot="P3-039" title="Voir cette place dans l'explorateur"><i class="dot"></i><b id="hero-bay-id">P3-039</b><span id="hero-bay-state">Occupée</span></button>
             <div class="toast-anpr" id="hero-anpr" data-anchor="gate">
-              <svg class="ico"><use href="#i-camera" /></svg>
+              <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-camera" /></svg>
               <b class="mono" id="hero-anpr-plate">AB-123-CD</b>
-              <span class="ok"><svg class="ico"><use href="#i-check" /></svg></span>
+              <span class="ok"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg></span>
             </div>
           </div>
         </div>
@@ -103,8 +110,8 @@
             <h1 class="title" data-reveal><span>AutoPark</span> <em>3D</em></h1>
             <p class="lead" data-reveal>240 places sur 4 niveaux, suivies en temps réel. La plaque est lue à l'entrée, la voiture est guidée jusqu'à sa place, et tout se réserve et se règle en ligne.</p>
             <div class="actions" data-reveal>
-              <button class="btn btn--primary" type="button" data-action="reserve-best"><svg class="ico"><use href="#i-bolt" /></svg>Réserver une place</button>
-              <button class="btn btn--ghost" type="button" id="tour-btn"><svg class="ico"><use href="#i-play" /></svg>Visite guidée</button>
+              <button class="btn btn--primary" type="button" data-action="reserve-best"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-bolt" /></svg>Réserver une place</button>
+              <button class="btn btn--ghost" type="button" id="tour-btn"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-play" /></svg>Visite guidée</button>
             </div>
           </div>
           <ul class="legend" data-reveal>
@@ -126,11 +133,11 @@
             <svg class="scanline" id="gate-scan" aria-hidden="true"><line x1="0" y1="0" x2="0" y2="0" /></svg>
             <div class="reticle" id="gate-reticle" data-anchor="plate"><i></i><i></i><i></i><i></i></div>
             <div class="bubble" id="gate-bubble" data-anchor="anpr">
-              <div class="bubble__title"><svg class="ico"><use href="#i-camera" /></svg>Caméra ANPR — Lecture plaque</div>
+              <div class="bubble__title"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-camera" /></svg>Caméra ANPR — Lecture plaque</div>
               <div class="bubble__plate mono" id="gate-plate">AB-123-CD</div>
-              <div class="bubble__status" id="gate-status"><svg class="ico"><use href="#i-check" /></svg><span>Plaque reconnue — Accès autorisé</span></div>
+              <div class="bubble__status" id="gate-status"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg><span>Plaque reconnue — Accès autorisé</span></div>
             </div>
-            <div class="chip chip--exit" id="gate-exit" data-anchor="exit"><svg class="ico"><use href="#i-check" /></svg><span>Sortie réglée · <b class="mono">7,00 €</b></span></div>
+            <div class="chip chip--exit" id="gate-exit" data-anchor="exit"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg><span>Sortie réglée · <b class="mono">7,00 €</b></span></div>
           </div>
         </div>
         <div class="ui">
@@ -162,7 +169,7 @@
             <h2 class="h2" data-reveal>Guidé jusqu'à<br />la bonne place</h2>
             <p class="lead" data-reveal>Le système choisit la meilleure place libre selon la distance, le niveau et l'affluence, la réserve, puis trace le chemin au sol. Chaque place affiche son état en direct.</p>
             <div class="panel panel--smart" data-reveal>
-              <div class="panel__title"><svg class="ico"><use href="#i-spark" /></svg>Suggestions IA — Meilleures places</div>
+              <div class="panel__title"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-spark" /></svg>Suggestions IA — Meilleures places</div>
               <div class="smart-list" id="smart-list"></div>
               <div class="predict">
                 <div class="predict__head"><span>Prédiction ML · Dans 1 h</span><b id="pred-value">--%</b></div>
@@ -182,21 +189,21 @@
               <p class="kicker" data-reveal><b>03</b> Niveaux</p>
               <h2 class="h2 h2--sm" data-reveal>Explorez les 4 niveaux</h2>
             </div>
-            <div class="mode" id="mode-switch" data-reveal role="tablist" aria-label="Mode d'affichage">
-              <button class="is-active" type="button" data-mode="user" role="tab"><svg class="ico"><use href="#i-user" /></svg>Utilisateur</button>
-              <button type="button" data-mode="admin" role="tab"><svg class="ico"><use href="#i-shield" /></svg>Administrateur</button>
+            <div class="mode" id="mode-switch" data-reveal role="group" aria-label="Mode d'affichage">
+              <button class="is-active" type="button" data-mode="user" aria-pressed="true"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-user" /></svg>Utilisateur</button>
+              <button type="button" data-mode="admin" aria-pressed="false"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-shield" /></svg>Administrateur</button>
             </div>
           </div>
           <div class="explore">
             <aside class="explore__side" data-reveal>
               <div class="levels" id="levels" role="tablist" aria-label="Niveau">
-                <button type="button" data-level="3" class="is-active">P3<small>toit</small></button>
-                <button type="button" data-level="2">P2</button>
-                <button type="button" data-level="1">P1</button>
-                <button type="button" data-level="0">P0<small>EV · PMR</small></button>
+                <button type="button" role="tab" id="lvl-tab-3" aria-controls="level-map" aria-selected="true" data-level="3" class="is-active">P3<small>toit</small></button>
+                <button type="button" role="tab" id="lvl-tab-2" aria-controls="level-map" aria-selected="false" tabindex="-1" data-level="2">P2</button>
+                <button type="button" role="tab" id="lvl-tab-1" aria-controls="level-map" aria-selected="false" tabindex="-1" data-level="1">P1</button>
+                <button type="button" role="tab" id="lvl-tab-0" aria-controls="level-map" aria-selected="false" tabindex="-1" data-level="0">P0<small>EV · PMR</small></button>
               </div>
               <div class="panel panel--mini">
-                <label class="panel__title" for="search-input"><svg class="ico"><use href="#i-search" /></svg>Recherche</label>
+                <label class="panel__title" for="search-input"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-search" /></svg>Recherche</label>
                 <input class="input" id="search-input" type="text" placeholder="P0-001 ou plaque AB-123-CD" autocomplete="off" spellcheck="false" />
                 <div class="results" id="search-results"></div>
               </div>
@@ -214,21 +221,22 @@
                   <div><span>Résa. actives</span><b id="adm-active">--</b></div>
                 </div>
                 <div class="admin-actions">
-                  <button class="btn btn--line btn--xs" type="button" id="btn-sim-in"><svg class="ico"><use href="#i-car" /></svg>Simuler arrivée</button>
-                  <button class="btn btn--line btn--xs" type="button" id="btn-sim-out"><svg class="ico"><use href="#i-car" /></svg>Simuler sortie</button>
-                  <button class="btn btn--line btn--xs btn--warn" type="button" id="btn-reset"><svg class="ico"><use href="#i-reset" /></svg>Reset système</button>
+                  <button class="btn btn--line btn--xs" type="button" id="btn-sim-in"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-car" /></svg>Simuler arrivée</button>
+                  <button class="btn btn--line btn--xs" type="button" id="btn-sim-out"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-car" /></svg>Simuler sortie</button>
+                  <button class="btn btn--line btn--xs btn--warn" type="button" id="btn-reset"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-reset" /></svg>Reset système</button>
                 </div>
               </div>
             </aside>
-            <div class="explore__map" data-reveal>
-              <canvas id="level-canvas" width="1600" height="900" aria-label="Plan 3D du niveau sélectionné"></canvas>
-              <div class="tip" id="tip"><b id="tip-id"></b><span id="tip-status"></span><i class="mono" id="tip-plate"></i></div>
-              <p class="explore__hint">Cliquez sur une place disponible pour la réserver · survolez pour voir son état</p>
+            <div class="explore__map" id="level-map" role="tabpanel" aria-labelledby="lvl-tab-3" data-reveal>
+              <canvas id="level-canvas" width="1600" height="900" tabindex="0" role="application" aria-label="Plan du niveau P3" aria-describedby="plan-hint"></canvas>
+              <p class="sr-only" id="plan-live" aria-live="polite"></p>
+              <div class="tip" id="tip" aria-hidden="true"><b id="tip-id"></b><span id="tip-status"></span><i class="mono" id="tip-plate"></i></div>
+              <p class="explore__hint" id="plan-hint">Cliquez sur une place disponible pour la réserver · au clavier : flèches pour choisir une place, Entrée pour la sélectionner</p>
             </div>
             <aside class="explore__detail" data-reveal>
               <div class="panel spot-card" id="spot-card">
                 <div class="spot-card__empty" id="spot-empty">
-                  <svg class="ico"><use href="#i-pin" /></svg>
+                  <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-pin" /></svg>
                   <p>Sélectionnez une place sur le plan</p>
                 </div>
                 <div class="spot-card__body" id="spot-body" hidden>
@@ -239,15 +247,15 @@
                     <div><dt>Plaque</dt><dd class="mono" id="spot-plate">—</dd></div>
                     <div><dt>Score IA</dt><dd id="spot-score">—</dd></div>
                   </dl>
-                  <button class="btn btn--primary btn--block" type="button" id="reserve-btn"><svg class="ico"><use href="#i-bolt" /></svg>Réserver cette place</button>
+                  <button class="btn btn--primary btn--block" type="button" id="reserve-btn"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-bolt" /></svg>Réserver cette place</button>
                   <p class="spot-card__note" id="spot-note"></p>
                 </div>
               </div>
               <div class="panel panel--mini">
-                <div class="panel__title"><svg class="ico"><use href="#i-clock" /></svg>Activité en direct</div>
+                <div class="panel__title"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clock" /></svg>Activité en direct</div>
                 <ul class="feed" id="feed"></ul>
               </div>
-              <button class="btn btn--line btn--block" type="button" id="btn-history"><svg class="ico"><use href="#i-clock" /></svg>Historique</button>
+              <button class="btn btn--line btn--block" type="button" id="btn-history"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clock" /></svg>Historique</button>
             </aside>
           </div>
         </div>
@@ -302,24 +310,24 @@
           </div>
           <div class="api">
             <div class="panel api__panel" data-reveal>
-              <div class="tabs" id="api-tabs" role="tablist">
-                <button class="is-active" type="button" data-tab="endpoints">Endpoints</button>
-                <button type="button" data-tab="log">Journal</button>
-                <button type="button" data-tab="webhooks">Webhooks</button>
-                <button type="button" data-tab="keys">Clés API</button>
-                <button type="button" data-tab="export">Export</button>
+              <div class="tabs" id="api-tabs" role="tablist" aria-label="API">
+                <button class="is-active" type="button" role="tab" id="api-tab-endpoints" aria-controls="api-pane-endpoints" aria-selected="true" data-tab="endpoints">Endpoints</button>
+                <button type="button" role="tab" id="api-tab-log" aria-controls="api-pane-log" aria-selected="false" tabindex="-1" data-tab="log">Journal</button>
+                <button type="button" role="tab" id="api-tab-webhooks" aria-controls="api-pane-webhooks" aria-selected="false" tabindex="-1" data-tab="webhooks">Webhooks</button>
+                <button type="button" role="tab" id="api-tab-keys" aria-controls="api-pane-keys" aria-selected="false" tabindex="-1" data-tab="keys">Clés API</button>
+                <button type="button" role="tab" id="api-tab-export" aria-controls="api-pane-export" aria-selected="false" tabindex="-1" data-tab="export">Export</button>
               </div>
-              <div class="tabpane is-active" data-pane="endpoints">
+              <div class="tabpane is-active" data-pane="endpoints" id="api-pane-endpoints" role="tabpanel" aria-labelledby="api-tab-endpoints">
                 <div class="endpoints" id="endpoints"></div>
                 <pre class="response" id="api-response">// Cliquez sur « Tester » :
 // la réponse est simulée à partir
 // de l'état du parking.</pre>
               </div>
-              <div class="tabpane" data-pane="log">
+              <div class="tabpane" data-pane="log" id="api-pane-log" role="tabpanel" aria-labelledby="api-tab-log">
                 <div class="log__head"><span>Requêtes récentes</span><button class="btn btn--line btn--xs" type="button" id="log-clear">Vider</button></div>
                 <div class="log" id="api-log"><p class="log__empty">Aucune requête — testez un endpoint</p></div>
               </div>
-              <div class="tabpane" data-pane="webhooks">
+              <div class="tabpane" data-pane="webhooks" id="api-pane-webhooks" role="tabpanel" aria-labelledby="api-tab-webhooks">
                 <label class="field"><span>URL de destination</span><input class="input mono" id="webhook-url" type="text" value="https://example.com/parking-webhook" /></label>
                 <p class="field__label">Événements à écouter</p>
                 <div class="checks" id="webhook-events">
@@ -333,7 +341,7 @@
                 <button class="btn btn--primary btn--sm" type="button" id="webhook-test">Envoyer un événement test</button>
                 <pre class="response response--sm" id="webhook-result" hidden></pre>
               </div>
-              <div class="tabpane" data-pane="keys">
+              <div class="tabpane" data-pane="keys" id="api-pane-keys" role="tabpanel" aria-labelledby="api-tab-keys">
                 <p class="field__label">Clé d'API active (lecture / écriture)</p>
                 <div class="key"><code id="api-key">ap_live_••••••••••••••••••••••</code><button class="btn btn--line btn--xs" type="button" id="key-reveal">Révéler</button></div>
                 <p class="field__label">Clé lecture seule</p>
@@ -341,7 +349,7 @@
                 <div class="usage"><span>Usage ce mois</span><b class="mono" id="api-usage">0 requête</b></div>
                 <button class="btn btn--line btn--sm" type="button" id="key-regen">Régénérer la clé</button>
               </div>
-              <div class="tabpane" data-pane="export">
+              <div class="tabpane" data-pane="export" id="api-pane-export" role="tabpanel" aria-labelledby="api-tab-export">
                 <p class="lead lead--sm">Exportez les données du parking dans différents formats.</p>
                 <div class="exports">
                   <button type="button" data-export="spots"><b>JSON</b><code>spots.json</code><span>Toutes les places avec statut actuel, plaque, type</span></button>
@@ -361,7 +369,7 @@
                   <li><span>24 h</span><b>84,00 €</b></li>
                   <li><span>Dépassement</span><b>+ 50 %</b></li>
                 </ul>
-                <button class="btn btn--primary btn--block" type="button" data-action="reserve-best"><svg class="ico"><use href="#i-bolt" /></svg>Réserver une place</button>
+                <button class="btn btn--primary btn--block" type="button" data-action="reserve-best"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-bolt" /></svg>Réserver une place</button>
               </div>
               <div class="panel note" data-reveal>
                 <div class="panel__title">Démonstration</div>
@@ -380,13 +388,13 @@
       <div><span>Votre réservation</span><b id="ar-id">--</b></div>
       <div><span>Plaque</span><b class="mono" id="ar-plate">--</b></div>
       <div><span>Temps restant</span><b class="mono" id="ar-timer">--:--</b></div>
-      <button class="btn btn--line btn--xs" type="button" id="ar-guide"><svg class="ico"><use href="#i-pin" /></svg>Voir</button>
+      <button class="btn btn--line btn--xs" type="button" id="ar-guide"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-pin" /></svg>Voir</button>
       <button class="btn btn--danger btn--xs" type="button" id="ar-end">Libérer &amp; payer</button>
     </div>
 
     <!-- visite guidée -->
     <div class="tourbar" id="tourbar" hidden>
-      <svg class="ico"><use href="#i-play" /></svg>
+      <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-play" /></svg>
       <span id="tour-caption">Visite guidée</span>
       <div class="tourbar__bar"><i id="tour-progress"></i></div>
       <button class="btn btn--line btn--xs" type="button" id="tour-stop">Arrêter</button>
@@ -399,7 +407,7 @@
     <!-- fenêtres -->
     <div class="modal" id="modal-reserve" role="dialog" aria-modal="true" aria-labelledby="res-title" hidden>
       <div class="modal__box">
-        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico"><use href="#i-x" /></svg></button>
+        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-x" /></svg></button>
         <h3 id="res-title">Réserver une place</h3>
         <p class="modal__sub" id="res-spot">P0-000</p>
         <label class="field"><span>Plaque d'immatriculation</span><input class="input input--plate mono" id="res-plate" type="text" maxlength="12" placeholder="AB-123-CD" autocomplete="off" spellcheck="false" /></label>
@@ -416,7 +424,7 @@
           <div><span>Durée</span><b class="mono" id="res-duration">2 h</b></div>
           <div class="rows__total"><span>Total</span><b class="mono" id="res-total">7,00 €</b></div>
         </div>
-        <button class="btn btn--primary btn--block" type="button" id="res-confirm"><svg class="ico"><use href="#i-card" /></svg>Confirmer &amp; payer</button>
+        <button class="btn btn--primary btn--block" type="button" id="res-confirm"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-card" /></svg>Confirmer &amp; payer</button>
         <button class="btn btn--line btn--block" type="button" data-close>Annuler</button>
         <p class="modal__note">Démonstration : aucun paiement réel, rien n'est envoyé.</p>
       </div>
@@ -424,8 +432,8 @@
 
     <div class="modal" id="modal-receipt" role="dialog" aria-modal="true" aria-labelledby="rec-title" hidden>
       <div class="modal__box">
-        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico"><use href="#i-x" /></svg></button>
-        <div class="modal__ok"><svg class="ico"><use href="#i-check" /></svg></div>
+        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-x" /></svg></button>
+        <div class="modal__ok"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg></div>
         <h3 id="rec-title" class="center">Paiement confirmé</h3>
         <p class="modal__sub center">Reçu #<span id="rec-id">--</span></p>
         <div class="rows">
@@ -436,14 +444,14 @@
           <div><span>Durée</span><b class="mono" id="rec-dur">--</b></div>
           <div class="rows__total"><span>Montant payé</span><b class="mono" id="rec-total">--</b></div>
         </div>
-        <button class="btn btn--primary btn--block" type="button" id="rec-navigate"><svg class="ico"><use href="#i-pin" /></svg>Me guider vers ma place</button>
+        <button class="btn btn--primary btn--block" type="button" id="rec-navigate"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-pin" /></svg>Me guider vers ma place</button>
         <button class="btn btn--line btn--block" type="button" data-close>Fermer</button>
       </div>
     </div>
 
     <div class="modal" id="modal-history" role="dialog" aria-modal="true" aria-labelledby="his-title" hidden>
       <div class="modal__box modal__box--wide">
-        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico"><use href="#i-x" /></svg></button>
+        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-x" /></svg></button>
         <h3 id="his-title">Historique des réservations</h3>
         <p class="modal__sub">Session en cours + passées</p>
         <div class="history" id="history-list"></div>
@@ -452,7 +460,7 @@
 
     <div class="modal" id="modal-exit" role="dialog" aria-modal="true" aria-labelledby="ex-title" hidden>
       <div class="modal__box">
-        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico"><use href="#i-x" /></svg></button>
+        <button class="modal__close" type="button" data-close aria-label="Fermer"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-x" /></svg></button>
         <h3 id="ex-title">Fin de stationnement</h3>
         <p class="modal__sub">Merci de votre visite</p>
         <div class="rows">
@@ -462,7 +470,7 @@
           <div><span>Dépassement</span><b class="mono" id="ex-over">--</b></div>
           <div class="rows__total"><span>À régler</span><b class="mono" id="ex-total">--</b></div>
         </div>
-        <button class="btn btn--primary btn--block" type="button" id="ex-pay"><svg class="ico"><use href="#i-card" /></svg>Payer &amp; libérer</button>
+        <button class="btn btn--primary btn--block" type="button" id="ex-pay"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-card" /></svg>Payer &amp; libérer</button>
         <p class="modal__note">Démonstration : aucun paiement réel.</p>
       </div>
     </div>

@@ -43,3 +43,29 @@ export function download(name, text, type = 'application/json') {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+
+/** Onglets accessibles : l'onglet actif est annoncé et seul à recevoir la tabulation. */
+export function markTabs(list, active) {
+  for (const t of list.querySelectorAll('[role="tab"]')) {
+    const on = t === active;
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+    t.tabIndex = on ? 0 : -1;
+  }
+}
+
+/** Flèches, Début et Fin entre les onglets d'une liste ; l'onglet atteint est activé. */
+export function keyTabs(list) {
+  list.addEventListener('keydown', (e) => {
+    const tabs = [...list.querySelectorAll('[role="tab"]')];
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    const keys = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: tabs.length - 1 };
+    if (!(e.key in keys)) return;
+    e.preventDefault();
+    e.stopPropagation(); // ces touches changent aussi de section : pas ici
+    const t = tabs[(keys[e.key] + tabs.length) % tabs.length];
+    t.focus();
+    t.click();
+  });
+}

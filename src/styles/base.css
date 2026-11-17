@@ -5,16 +5,39 @@
 :root {
   --u: 1px; /* unité de l'interface */
   --su: 1px; /* unité de la scène 3D (vidéo + étiquettes ancrées) */
+
+  /* Échelle typographique : six tailles d'interface au rapport d'environ 1,25, puis les titres.
+     Chaque taille suit la maquette (--u). Les trois plus petites ne descendent jamais sous un
+     plancher en rem : le texte reste lisible sur un petit écran et suit la taille de police
+     réglée dans le navigateur. */
+  --t-label: max(calc(var(--u) * 11), 0.625rem); /* étiquettes, légendes, badges */
+  --t-small: max(calc(var(--u) * 13), 0.75rem); /* menu, boutons, listes, champs */
+  --t-body: max(calc(var(--u) * 16), 0.875rem); /* texte courant */
+  --t-lg: calc(var(--u) * 20); /* valeurs mises en avant */
+  --t-xl: calc(var(--u) * 26);
+  --t-2xl: calc(var(--u) * 36); /* grands chiffres */
+  --t-h2-sm: calc(var(--u) * 40);
+  --t-h2-m: calc(var(--u) * 44); /* titre de section, téléphone */
+  --t-h2: calc(var(--u) * 56); /* titre de section */
+  --t-title-m: calc(var(--u) * 66); /* titre d'accueil, téléphone */
+  --t-title-hero: calc(var(--u) * 76); /* titre d'accueil */
+  --t-title: calc(var(--u) * 84);
+  /* étiquettes ancrées à la vidéo : elles suivent l'unité de la scène (voir .scene) */
+  --ts-label: calc(var(--su) * 11);
+  --ts-small: calc(var(--su) * 13);
+
   --available: #4ade80;
   --occupied: #f87171;
   --reserved: #60a5fa;
   --selected: #facc15;
+  --selected-ink: var(--selected); /* ambre du texte (le jour, plus foncé) */
   --ev: #34d399;
   --pmr: #818cf8;
   --family: #fb923c;
   --accent: #2563eb;
   --accent-hi: #3b82f6;
   --cyan: #64c8ff;
+  --focus: var(--cyan); /* contour du focus clavier (le jour : bleu de la marque, 4,5:1) */
   --font-d: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --font: 'Barlow', 'Segoe UI', system-ui, sans-serif;
   --mono: 'JetBrains Mono', 'Consolas', monospace;
@@ -25,9 +48,11 @@ html[data-theme='night'] {
   --bg: #0a0e1a;
   --bg-soft: #0e1426;
   --ink: #eef3ff;
-  --muted: rgba(226, 236, 255, 0.62);
-  --faint: rgba(226, 236, 255, 0.36);
-  --panel: rgba(11, 17, 33, 0.76);
+  /* textes secondaires opaques, teintés du bleu de la marque : au moins 9:1 et 7:1 (WCAG AAA)
+     sur tous les fonds de nuit (page, panneaux, survol) */
+  --muted: #c8d0dd; /* oklch(85.5% 0.02 262) */
+  --faint: #b0b8c6; /* oklch(78% 0.022 262) */
+  --panel: rgba(11, 17, 33, 0.93); /* presque plein : pas de verre flou, le texte reste sur un fond stable */
   --panel-solid: #0f1628;
   --fill: rgba(255, 255, 255, 0.05);
   --fill-hi: rgba(120, 190, 255, 0.13);
@@ -35,7 +60,7 @@ html[data-theme='night'] {
   --line-hi: rgba(120, 190, 255, 0.42);
   --kicker: var(--cyan);
   --shadow: 0 calc(var(--u) * 18) calc(var(--u) * 48) rgba(0, 0, 0, 0.5);
-  --glow: 0 0 calc(var(--u) * 26) rgba(100, 200, 255, 0.35);
+  --glow: none; /* pas de halo : la lumière vient de la maquette */
   color-scheme: dark;
 }
 
@@ -43,21 +68,24 @@ html[data-theme='day'] {
   --bg: #e9edf2;
   --bg-soft: #f3f5f8;
   --ink: #0c1424;
-  --muted: rgba(12, 20, 36, 0.66);
-  --faint: rgba(12, 20, 36, 0.42);
-  --panel: rgba(255, 255, 255, 0.8);
+  /* au moins 9:1 et 7:1 sur tous les fonds de jour (page, panneaux, onglet actif) */
+  --muted: #2b3443; /* oklch(32.3% 0.03 262) */
+  --faint: #3b4454; /* oklch(38.5% 0.03 262) */
+  --panel: rgba(255, 255, 255, 0.94);
   --panel-solid: #ffffff;
   --fill: rgba(12, 20, 36, 0.045);
   --fill-hi: rgba(37, 99, 235, 0.1);
   --line: rgba(12, 30, 70, 0.13);
   --line-hi: rgba(37, 99, 235, 0.5);
   --kicker: var(--accent);
+  --focus: var(--accent);
   --shadow: 0 calc(var(--u) * 14) calc(var(--u) * 40) rgba(20, 40, 80, 0.14);
   --glow: none;
   --available: #16a34a;
   --occupied: #e5484d;
   --reserved: #2f7de1;
   --selected: #d99a06;
+  --selected-ink: #693700; /* ambre foncé pour le texte : 7:1, oklch(39% 0.11 70) */
   --ev: #0d9b72;
   --pmr: #5b5fe0;
   --family: #e8700f;
@@ -78,11 +106,18 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font);
-  font-size: calc(var(--u) * 14);
+  font-size: var(--t-body);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   transition: background-color 0.5s, color 0.5s;
+}
+
+/* La racine garde la taille de police réglée dans le navigateur (16 px par défaut) : 1 rem ne
+   suit pas la maquette, et les tailles minimales du texte (--t-label, --t-small, --t-body) en
+   dépendent. Le texte de la page est dimensionné sur body. */
+html {
+  font-size: 100%;
 }
 
 button,
@@ -148,9 +183,59 @@ pre,
   flex: none;
 }
 
+/* lien d'évitement : visible seulement au focus clavier */
+.skip-link {
+  position: fixed;
+  z-index: 200;
+  left: calc(var(--u) * 16);
+  top: calc(var(--u) * 12);
+  padding: calc(var(--u) * 10) calc(var(--u) * 16);
+  border-radius: calc(var(--u) * 10);
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--t-small);
+  font-weight: 700;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* lu par les lecteurs d'écran, invisible à l'écran */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* bouton pause / lecture de la maquette */
+#motion-btn.is-paused .ico--pause,
+#motion-btn:not(.is-paused) .ico--play {
+  display: none;
+}
+
+/* le système demande moins de mouvement : transitions et animations quasi instantanées */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 :focus-visible {
-  outline: calc(var(--u) * 2) solid var(--cyan);
-  outline-offset: calc(var(--u) * 2);
+  outline: max(2px, calc(var(--u) * 2)) solid var(--focus);
+  outline-offset: max(2px, calc(var(--u) * 2));
 }
 
 /* ------------------------------------------------------------ sections */
@@ -178,6 +263,15 @@ pre,
   width: calc(var(--su) * 1280);
   height: calc(var(--su) * 776);
   transform: translate(calc(-50% + var(--sx, 0px)), calc(-50% + var(--sy, 0px)));
+  /* --su est fixée sur chaque scène : les tailles des étiquettes se calculent ici */
+  --ts-label: calc(var(--su) * 11);
+  --ts-small: calc(var(--su) * 13);
+}
+
+/* sur grand écran la scène suit l'interface : mêmes planchers que le reste du texte */
+body:not(.is-mobile) .scene {
+  --ts-label: max(calc(var(--su) * 11), 0.625rem);
+  --ts-small: max(calc(var(--su) * 13), 0.75rem);
 }
 
 .scene__videos {
@@ -263,12 +357,11 @@ pre,
   border-radius: calc(var(--u) * 8);
   background: var(--accent);
   color: #fff;
-  font: 700 calc(var(--u) * 20) / 1 var(--font-d);
-  box-shadow: 0 0 calc(var(--u) * 18) rgba(37, 99, 235, 0.55);
+  font: 700 var(--t-lg) / 1 var(--font-d);
 }
 
 .brand__name {
-  font: 700 calc(var(--u) * 19) / 1 var(--font-d);
+  font: 700 var(--t-lg) / 1 var(--font-d);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -288,7 +381,7 @@ pre,
 .nav__links a {
   padding: calc(var(--u) * 7) calc(var(--u) * 12);
   border-radius: 999px;
-  font-size: calc(var(--u) * 11.5);
+  font-size: var(--t-small);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -318,9 +411,7 @@ pre,
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--panel);
-  -webkit-backdrop-filter: blur(calc(var(--u) * 12));
-  backdrop-filter: blur(calc(var(--u) * 12));
-  font-size: calc(var(--u) * 10.5);
+  font-size: var(--t-small);
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -370,7 +461,7 @@ html[data-theme='day'] .ico--moon {
   height: calc(var(--u) * 42);
   padding: 0 calc(var(--u) * 20);
   border-radius: calc(var(--u) * 11);
-  font-size: calc(var(--u) * 12);
+  font-size: var(--t-small);
   font-weight: 600;
   letter-spacing: 0.13em;
   text-transform: uppercase;
@@ -385,12 +476,12 @@ html[data-theme='day'] .ico--moon {
 .btn--primary {
   background: linear-gradient(135deg, #2f6df2, #1d4ed8);
   color: #fff;
-  box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 24) rgba(37, 99, 235, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 10) rgba(37, 99, 235, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .btn--primary:hover {
   transform: translateY(calc(var(--u) * -1.5));
-  box-shadow: 0 calc(var(--u) * 12) calc(var(--u) * 30) rgba(37, 99, 235, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  box-shadow: 0 calc(var(--u) * 5) calc(var(--u) * 14) rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .btn--ghost,
@@ -398,8 +489,6 @@ html[data-theme='day'] .ico--moon {
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
-  -webkit-backdrop-filter: blur(calc(var(--u) * 12));
-  backdrop-filter: blur(calc(var(--u) * 12));
 }
 
 .btn--ghost:hover,
@@ -415,20 +504,20 @@ html[data-theme='day'] .ico--moon {
 }
 
 .btn--warn {
-  color: var(--selected);
+  color: var(--selected-ink);
 }
 
 .btn--sm {
   height: calc(var(--u) * 32);
   padding: 0 calc(var(--u) * 14);
-  font-size: calc(var(--u) * 10.5);
+  font-size: var(--t-small);
   border-radius: calc(var(--u) * 9);
 }
 
 .btn--xs {
   height: calc(var(--u) * 28);
   padding: 0 calc(var(--u) * 11);
-  font-size: calc(var(--u) * 9.5);
+  font-size: var(--t-label);
   border-radius: calc(var(--u) * 8);
   gap: calc(var(--u) * 6);
 }
@@ -442,7 +531,7 @@ html[data-theme='day'] .ico--moon {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 10);
-  font-size: calc(var(--u) * 11);
+  font-size: var(--t-small);
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
@@ -450,7 +539,7 @@ html[data-theme='day'] .ico--moon {
 }
 
 .kicker b {
-  font: 600 calc(var(--u) * 11) / 1 var(--mono);
+  font: 600 var(--t-small) / 1 var(--mono);
   letter-spacing: 0.08em;
   padding: calc(var(--u) * 4) calc(var(--u) * 7);
   border: 1px solid var(--line-hi);
@@ -458,7 +547,7 @@ html[data-theme='day'] .ico--moon {
 }
 
 .title {
-  font: 700 calc(var(--u) * 84) / 0.86 var(--font-d);
+  font: 700 var(--t-title) / 0.86 var(--font-d);
   letter-spacing: -0.012em;
   text-transform: uppercase;
 }
@@ -470,23 +559,23 @@ html[data-theme='day'] .ico--moon {
 }
 
 .h2 {
-  font: 700 calc(var(--u) * 56) / 0.92 var(--font-d);
+  font: 700 var(--t-h2) / 0.92 var(--font-d);
   letter-spacing: -0.008em;
   text-transform: uppercase;
 }
 
 .h2--sm {
-  font-size: calc(var(--u) * 40);
+  font-size: var(--t-h2-sm);
 }
 
 .lead {
-  font-size: calc(var(--u) * 14.5);
+  font-size: var(--t-body);
   line-height: 1.55;
   color: var(--muted);
 }
 
 .lead--sm {
-  font-size: calc(var(--u) * 12.5);
+  font-size: var(--t-small);
 }
 
 /* ------------------------------------------------------------ panneaux */
@@ -494,8 +583,6 @@ html[data-theme='day'] .ico--moon {
   border: 1px solid var(--line);
   border-radius: calc(var(--u) * 14);
   background: var(--panel);
-  -webkit-backdrop-filter: blur(calc(var(--u) * 14));
-  backdrop-filter: blur(calc(var(--u) * 14));
   padding: calc(var(--u) * 16);
   box-shadow: var(--shadow);
 }
@@ -510,7 +597,7 @@ html[data-theme='day'] .ico--moon {
   align-items: center;
   gap: calc(var(--u) * 7);
   margin-bottom: calc(var(--u) * 10);
-  font-size: calc(var(--u) * 9.5);
+  font-size: var(--t-label);
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -529,13 +616,14 @@ html[data-theme='day'] .ico--moon {
   border: 1px solid var(--line);
   border-radius: calc(var(--u) * 8);
   background: var(--fill);
-  font-size: calc(var(--u) * 12);
+  font-size: var(--t-small);
   outline: none;
   transition: border-color 0.15s, background-color 0.15s;
 }
 
 .input:focus {
-  border-color: var(--line-hi);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus); /* anneau de 2 px : le contour par défaut est retiré */
   background: var(--fill-hi);
 }
 
@@ -549,7 +637,7 @@ html[data-theme='day'] .ico--moon {
   height: calc(var(--u) * 20);
   padding: 0 calc(var(--u) * 8);
   border-radius: 999px;
-  font-size: calc(var(--u) * 9);
+  font-size: var(--t-label);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -595,7 +683,7 @@ html[data-theme='day'] .ico--moon {
   border-radius: calc(var(--u) * 7);
   background: var(--panel-solid);
   border: 1px solid var(--line);
-  font-size: calc(var(--u) * 9.5);
+  font-size: var(--t-label);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -637,8 +725,8 @@ html[data-theme='day'] .ico--moon {
   border-radius: calc(var(--u) * 20);
   background: var(--accent);
   color: #fff;
-  font: 700 calc(var(--u) * 54) / 1 var(--font-d);
-  box-shadow: 0 0 calc(var(--u) * 60) rgba(37, 99, 235, 0.65);
+  font: 700 var(--t-h2) / 1 var(--font-d);
+  box-shadow: 0 0 calc(var(--u) * 24) rgba(37, 99, 235, 0.3);
   animation: float 2.4s ease-in-out infinite;
 }
 
@@ -649,7 +737,7 @@ html[data-theme='day'] .ico--moon {
 }
 
 .loader__name {
-  font: 700 calc(var(--u) * 20) / 1 var(--font-d);
+  font: 700 var(--t-lg) / 1 var(--font-d);
   letter-spacing: 0.3em;
   text-transform: uppercase;
 }
@@ -672,7 +760,7 @@ html[data-theme='day'] .ico--moon {
 }
 
 .loader__pct {
-  font: 500 calc(var(--u) * 11) / 1 var(--mono);
+  font: 500 var(--t-small) / 1 var(--mono);
   color: var(--muted);
 }
 
@@ -695,7 +783,7 @@ html[data-theme='day'] .ico--moon {
   border: 1px solid color-mix(in srgb, var(--available) 45%, transparent);
   background: var(--panel-solid);
   color: var(--available);
-  font-size: calc(var(--u) * 11);
+  font-size: var(--t-small);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -720,7 +808,7 @@ html[data-theme='day'] .ico--moon {
 .alert {
   top: calc(var(--u) * 118);
   border-color: color-mix(in srgb, var(--selected) 50%, transparent);
-  color: var(--selected);
+  color: var(--selected-ink);
 }
 
 .alert.is-danger {

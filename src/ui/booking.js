@@ -42,14 +42,39 @@ function nextAlert() {
   }, 3800);
 }
 
+// Fenêtres : tant qu'une fenêtre est ouverte, le reste de la page est inerte (ni clic, ni
+// tabulation, ni lecteur d'écran) ; à la fermeture, le focus revient là où il était.
+let returnFocus = null;
+
+function setInert(on) {
+  for (const el of document.body.children) {
+    if (el.classList.contains('modal') || el.id === 'notif' || el.id === 'alert' || el.tagName === 'SCRIPT') continue;
+    el.inert = on;
+  }
+}
+
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 export function openModal(id) {
   const m = $(`#${id}`);
+  const a = document.activeElement;
+  if (!returnFocus && a instanceof HTMLElement && !a.closest('.modal')) returnFocus = a;
   m.hidden = false;
+  setInert(true);
   m.querySelector('input, button:not(.modal__close)')?.focus({ preventScroll: true });
 }
 
 export function closeModal(id) {
   $(`#${id}`).hidden = true;
+  if (modalOpen()) return;
+  setInert(false);
+  // une autre fenêtre peut s'ouvrir aussitôt (réservation -> reçu) : on attend une image
+  requestAnimationFrame(() => {
+    if (modalOpen()) return;
+    const t = returnFocus;
+    returnFocus = null;
+    if (t && t.isConnected && !t.closest('[inert], [hidden]')) t.focus({ preventScroll: true });
+  });
 }
 
 export const modalOpen = () => $$('.modal').some((m) => !m.hidden);
@@ -62,11 +87,26 @@ export class Booking {
 
     for (const m of $$('.modal')) {
       m.addEventListener('click', (e) => {
-        if (e.target === m || e.target.closest('[data-close]')) m.hidden = true;
+        if (e.target === m || e.target.closest('[data-close]')) closeModal(m.id);
+      });
+      // la tabulation boucle dans la fenêtre
+      m.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab') return;
+        const f = [...m.querySelectorAll(FOCUSABLE)].filter((x) => !x.disabled && x.getClientRects().length);
+        if (!f.length) return;
+        const first = f[0];
+        const last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       });
     }
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') $$('.modal').forEach((m) => (m.hidden = true));
+      if (e.key === 'Escape') $$('.modal').filter((m) => !m.hidden).forEach((m) => closeModal(m.id));
     });
 
     $('#durations').addEventListener('click', (e) => {
