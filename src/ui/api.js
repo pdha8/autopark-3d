@@ -13,7 +13,8 @@ const ENDPOINTS = [
   { id: 'stats', method: 'GET', url: '/stats', desc: "Statistiques globales : taux d'occupation, CA, flux" },
   { id: 'anpr', method: 'POST', url: '/anpr/scan', desc: "Soumet une plaque à l'ANPR · Body : { plate, cameraId }" },
 ];
-const COLORS = { GET: 'var(--reserved)', POST: 'var(--available)', DEL: 'var(--occupied)', PUT: 'var(--selected-ink)' };
+// couleur de chaque méthode : vive pour la pastille (--x), encre pour le texte (--x-ink)
+const TOKEN = { GET: 'reserved', POST: 'available', DEL: 'occupied', PUT: 'selected' };
 
 const view = (s) => ({ id: s.id, level: s.level, type: s.type, status: s.status, plate: s.plate });
 
@@ -62,7 +63,7 @@ function respond(id) {
 export class ApiPanel {
   constructor() {
     this.calls = 0;
-    $('#endpoints').innerHTML = ENDPOINTS.map((e) => `<button class="endpoint" type="button" data-ep="${e.id}"><span class="method" style="--c:${COLORS[e.method]}">${e.method}</span><code>${e.url}</code><em>Tester</em><small>${e.desc}</small></button>`).join('');
+    $('#endpoints').innerHTML = ENDPOINTS.map((e) => `<button class="endpoint" type="button" data-ep="${e.id}"><span class="method" style="--c:var(--${TOKEN[e.method]});--ci:var(--${TOKEN[e.method]}-ink)">${e.method}</span><code>${e.url}</code><em>Tester</em><small>${e.desc}</small></button>`).join('');
     $('#endpoints').addEventListener('click', (e) => {
       const b = e.target.closest('.endpoint');
       if (b) this.test(b);
@@ -110,7 +111,7 @@ export class ApiPanel {
     log.querySelector('.log__empty')?.remove();
     const d = new Date();
     const row = document.createElement('div');
-    row.innerHTML = `<time>${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}</time><span style="color:${COLORS[method] || 'inherit'}">${method}</span><span>${url}</span><span class="${status < 400 ? 'ok' : 'err'}">${status}</span>`;
+    row.innerHTML = `<time>${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}</time><span style="color:${TOKEN[method] ? `var(--${TOKEN[method]}-ink)` : 'inherit'}">${method}</span><span>${url}</span><span class="${status < 400 ? 'ok' : 'err'}">${status}</span>`;
     log.prepend(row);
     this.calls++;
     $('#api-usage').textContent = `${this.calls} requête${this.calls > 1 ? 's' : ''}`;

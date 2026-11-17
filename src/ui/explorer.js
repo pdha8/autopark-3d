@@ -148,6 +148,7 @@ export class Explorer {
     const badge = $('#spot-status');
     badge.textContent = mine ? 'Votre place' : STATUS_LABEL[s.status];
     badge.style.setProperty('--c', mine ? 'var(--selected-ink)' : `var(--${s.status})`);
+    badge.style.setProperty('--ci', mine ? 'var(--selected-ink)' : `var(--${s.status}-ink, var(--${s.status}))`);
     $('#spot-level').textContent = `P${s.level}${s.level === 3 ? ' · toit' : ''}`;
     $('#spot-type').textContent = TYPE_LABEL[s.type];
     $('#spot-plate').textContent = s.plate || '—';
@@ -307,6 +308,7 @@ export class Explorer {
       const st = $('#tip-status');
       st.textContent = s.mine ? 'Votre place' : STATUS_LABEL[s.status];
       st.style.setProperty('--c', s.mine ? 'var(--selected-ink)' : `var(--${s.status})`);
+      st.style.setProperty('--ci', s.mine ? 'var(--selected-ink)' : `var(--${s.status}-ink, var(--${s.status}))`);
       $('#tip-plate').textContent = s.plate || '';
     }
     this.dirty = true;

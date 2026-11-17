@@ -31,6 +31,10 @@
   --reserved: #60a5fa;
   --selected: #facc15;
   --selected-ink: var(--selected); /* ambre du texte (le jour, plus foncé) */
+  /* vert, rouge et bleu du texte : encres foncées le jour ; la nuit, rouge éclairci (7:1) */
+  --available-ink: var(--available);
+  --occupied-ink: #fa8080;
+  --reserved-ink: var(--reserved);
   --ev: #34d399;
   --pmr: #818cf8;
   --family: #fb923c;
@@ -77,7 +81,7 @@ html[data-theme='day'] {
   --fill-hi: rgba(37, 99, 235, 0.1);
   --line: rgba(12, 30, 70, 0.13);
   --line-hi: rgba(37, 99, 235, 0.5);
-  --kicker: var(--accent);
+  --kicker: #1e3a8a; /* bleu de la marque, foncé pour le texte : 7:1 */
   --focus: var(--accent);
   --shadow: 0 calc(var(--u) * 14) calc(var(--u) * 40) rgba(20, 40, 80, 0.14);
   --glow: none;
@@ -86,6 +90,9 @@ html[data-theme='day'] {
   --reserved: #2f7de1;
   --selected: #d99a06;
   --selected-ink: #693700; /* ambre foncé pour le texte : 7:1, oklch(39% 0.11 70) */
+  --available-ink: #14532d; /* vert, rouge et bleu foncés pour le texte : 7:1 */
+  --occupied-ink: #8b1a1a;
+  --reserved-ink: #1d3d9f;
   --ev: #0d9b72;
   --pmr: #5b5fe0;
   --family: #e8700f;
@@ -263,15 +270,13 @@ pre,
   width: calc(var(--su) * 1280);
   height: calc(var(--su) * 776);
   transform: translate(calc(-50% + var(--sx, 0px)), calc(-50% + var(--sy, 0px)));
-  /* --su est fixée sur chaque scène : les tailles des étiquettes se calculent ici */
-  --ts-label: calc(var(--su) * 11);
-  --ts-small: calc(var(--su) * 13);
-}
-
-/* sur grand écran la scène suit l'interface : mêmes planchers que le reste du texte */
-body:not(.is-mobile) .scene {
-  --ts-label: max(calc(var(--su) * 11), 0.625rem);
-  --ts-small: max(calc(var(--su) * 13), 0.75rem);
+  /* --su est fixée sur chaque scène : les tailles des étiquettes se calculent ici. Texte et
+     boîtes des étiquettes suivent --lu, qui ne descend pas sous 0,0577rem : mêmes planchers
+     (10 et 12 px) que le reste du texte, aussi sur téléphone et au zoom. Les ancrages
+     (décalages, traits) restent en --su pour rester collés à la maquette. */
+  --lu: max(var(--su), 0.0577rem);
+  --ts-label: calc(var(--lu) * 11);
+  --ts-small: calc(var(--lu) * 13);
 }
 
 .scene__videos {
@@ -500,7 +505,7 @@ html[data-theme='day'] .ico--moon {
 .btn--danger {
   border: 1px solid color-mix(in srgb, var(--occupied) 50%, transparent);
   background: color-mix(in srgb, var(--occupied) 14%, transparent);
-  color: var(--occupied);
+  color: var(--occupied-ink);
 }
 
 .btn--warn {
@@ -641,7 +646,7 @@ html[data-theme='day'] .ico--moon {
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--c, var(--muted));
+  color: var(--ci, var(--c, var(--muted)));
   background: color-mix(in srgb, var(--c, var(--muted)) 15%, transparent);
   border: 1px solid color-mix(in srgb, var(--c, var(--muted)) 40%, transparent);
 }
@@ -782,7 +787,7 @@ html[data-theme='day'] .ico--moon {
   border-radius: calc(var(--u) * 10);
   border: 1px solid color-mix(in srgb, var(--available) 45%, transparent);
   background: var(--panel-solid);
-  color: var(--available);
+  color: var(--available-ink);
   font-size: var(--t-small);
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -802,7 +807,7 @@ html[data-theme='day'] .ico--moon {
 
 .notif.is-error {
   border-color: color-mix(in srgb, var(--occupied) 45%, transparent);
-  color: var(--occupied);
+  color: var(--occupied-ink);
 }
 
 .alert {
@@ -813,5 +818,5 @@ html[data-theme='day'] .ico--moon {
 
 .alert.is-danger {
   border-color: color-mix(in srgb, var(--occupied) 50%, transparent);
-  color: var(--occupied);
+  color: var(--occupied-ink);
 }

@@ -65,6 +65,7 @@ function setChip(chip, label, state) {
   if (chip.dataset.state === state) return;
   chip.dataset.state = state;
   chip.style.setProperty('--c', `var(--${state})`);
+  chip.style.setProperty('--ci', `var(--${state}-ink, var(--${state}))`);
   label.textContent = BAY_LABEL[state];
 }
 
@@ -230,10 +231,11 @@ export class RoofOverlay {
     const at = (h) => Math.max(0.05, Math.min(0.98, hourly[(now.getHours() + h) % 24] * weekend));
     const p1 = Math.round(at(1) * 100);
     const p2 = Math.round(at(2) * 100);
-    const color = p1 > 85 ? 'var(--occupied)' : p1 > 65 ? 'var(--selected-ink)' : 'var(--available)';
+    const tone = p1 > 85 ? 'occupied' : p1 > 65 ? 'selected' : 'available';
     const trend = p1 > p2 ? 'En hausse' : p1 < p2 - 5 ? 'En baisse' : 'Stable';
     const box = $('#pred-value').closest('.predict');
-    box.style.setProperty('--pc', color);
+    box.style.setProperty('--pc', `var(--${tone})`); // barre : couleur vive
+    box.style.setProperty('--pci', `var(--${tone}-ink)`); // texte : encre (foncée le jour)
     $('#pred-value').textContent = `${p1} %`;
     $('#pred-bar').style.width = `${p1}%`;
     $('#pred-sub').textContent = `${trend} · dans 2 h : ${p2} %`;

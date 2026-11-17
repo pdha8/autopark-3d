@@ -67,6 +67,12 @@ export class Dashboard {
     const y = (v) => T + (H - T - B) * (1 - v);
     const svg = this.occ;
     svg.replaceChildren();
+    // équivalent texte pour les lecteurs d'écran (le dessin seul ne dit rien)
+    const pct = (v) => `${Math.round(v * 100)} %`;
+    const hi = series.indexOf(Math.max(...series));
+    const lo = series.indexOf(Math.min(...series));
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `Profil d'occupation par heure, journée type : au plus haut ${pct(series[hi])} à ${hi} h, au plus bas ${pct(series[lo])} à ${lo} h ; maintenant (${hour} h) : ${pct(series[hour])}.`);
     const defs = el('defs');
     const grad = el('linearGradient', { id: 'occ-fill', x1: 0, y1: 0, x2: 0, y2: 1 });
     grad.append(el('stop', { offset: '0%', 'stop-color': 'var(--reserved)', 'stop-opacity': 0.42 }), el('stop', { offset: '100%', 'stop-color': 'var(--reserved)', 'stop-opacity': 0 }));
@@ -115,6 +121,13 @@ export class Dashboard {
     }
     arrivals[n - 1] += store.flow.in;
     departures[n - 1] += store.flow.out;
+    // équivalent texte pour les lecteurs d'écran
+    const hourOf = (i) => (hour - (n - 1) + i + 48) % 24;
+    const total = (a) => a.reduce((s, v) => s + v, 0);
+    const ia = arrivals.indexOf(Math.max(...arrivals));
+    const id = departures.indexOf(Math.max(...departures));
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `Arrivées et départs des dernières 24 h : ${total(arrivals)} arrivées et ${total(departures)} départs ; le plus d'arrivées à ${hourOf(ia)} h (${arrivals[ia]}), le plus de départs à ${hourOf(id)} h (${departures[id]}).`);
     const max = Math.max(...arrivals, ...departures, 1);
     const mid = T + (H - T - B) / 2;
     const scale = (H - T - B) / 2 / max;

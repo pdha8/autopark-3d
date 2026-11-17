@@ -71,6 +71,7 @@ function fit() {
   root.style.setProperty('--u', `${u}px`);
   // téléphone debout : vidéos recadrées sur ce que l'écran montre (bien plus légères)
   const phone = mobile && !compact && w <= 430 * 1.3;
+  document.body.classList.toggle('is-phone', phone);
   for (const { el, name, scene } of scenes.values()) {
     scene.setKind(phone ? 'phone' : 'full');
     const sc = $('.scene', el);
@@ -113,22 +114,30 @@ function applyTheme(next, announce = true) {
 // ------------------------------------------------------------ animation
 // La maquette tourne en boucle : un bouton la met en pause (et la reprend). Si le système
 // demande moins de mouvement, elle démarre en pause, sans transitions ni effet de profondeur.
-const MOTION_KEY = 'autopark3d.motion';
+// Le bouton Pause / Lecture enregistre un choix. Sans choix, on suit le réglage « réduire les
+// animations » du système, relu à chaque visite et suivi en direct. L'ancienne clé
+// « autopark3d.motion » était écrite dès le chargement : on l'ignore et on l'efface.
+const MOTION_KEY = 'autopark3d.motion-choice';
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-let motionPaused = reduceMotion.matches;
+let motionChoice = null;
 try {
-  const saved = localStorage.getItem(MOTION_KEY);
-  if (saved) motionPaused = saved === 'paused';
+  localStorage.removeItem('autopark3d.motion');
+  motionChoice = localStorage.getItem(MOTION_KEY);
 } catch {
   /* stockage indisponible */
 }
+let motionPaused = motionChoice ? motionChoice === 'paused' : reduceMotion.matches;
 
-function applyMotion(paused, announce = true) {
+// chosen : clic sur le bouton (choix enregistré et annoncé) ; sinon, réglage du système
+function applyMotion(paused, chosen = true) {
   motionPaused = paused;
-  try {
-    localStorage.setItem(MOTION_KEY, paused ? 'paused' : 'play');
-  } catch {
-    /* stockage indisponible */
+  if (chosen) {
+    motionChoice = paused ? 'paused' : 'play';
+    try {
+      localStorage.setItem(MOTION_KEY, motionChoice);
+    } catch {
+      /* stockage indisponible */
+    }
   }
   const b = $('#motion-btn');
   b.classList.toggle('is-paused', paused);
@@ -139,7 +148,7 @@ function applyMotion(paused, announce = true) {
     if (paused) cur.scene.pause();
     else cur.scene.play();
   }
-  if (announce) notify(paused ? 'Animation en pause' : 'Animation reprise');
+  if (chosen) notify(paused ? 'Animation en pause' : 'Animation reprise');
 }
 
 // ------------------------------------------------------------ sections
@@ -275,6 +284,9 @@ function bind() {
   });
   $('#theme-btn').addEventListener('click', () => applyTheme(theme === 'night' ? 'day' : 'night'));
   $('#motion-btn').addEventListener('click', () => applyMotion(!motionPaused));
+  reduceMotion.addEventListener('change', (e) => {
+    if (!motionChoice) applyMotion(e.matches, false);
+  });
   // lien d'évitement : focus sur le titre de la section affichée
   $('#skip-link').addEventListener('click', (e) => {
     e.preventDefault();

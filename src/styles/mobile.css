@@ -401,3 +401,46 @@ body.is-compact .stats ~ .hero-copy {
     animation: none;
   }
 }
+
+/* étiquettes cliquables de la scène : zone de toucher agrandie, 44 x 44 px pour la place. Les
+   niveaux P0-P3 sont empilés à environ 40 unités de scène : leur zone s'arrête avant le
+   niveau voisin, sinon un niveau prendrait le toucher de l'autre */
+@media (pointer: coarse) {
+  .scene .tag--level::before,
+  .scene .chip[data-spot]::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  .scene .tag--level::before {
+    height: max(100%, min(44px, calc(var(--su) * 38)));
+  }
+}
+
+/* téléphone debout : la vidéo recadrée coupe le bord du bâtiment où sont les niveaux P0-P3 ;
+   on les retire plutôt que d'en laisser dépasser un morceau (la section Niveaux y mène) */
+.is-phone .scene .tag--level {
+  display: none;
+}
+
+/* bulle de la barrière (téléphone debout, mode compact) : avec le texte à sa taille minimale,
+   elle s'élargit pour garder titre et état sur une ligne ; plus basse, elle ne passe plus
+   sous la barre du haut */
+.is-phone .bubble,
+.is-compact .bubble {
+  width: calc(var(--lu) * 290);
+}
+
+/* mode compact : la scène est juste sous la barre du haut ; bulle plus serrée en hauteur */
+.is-compact .bubble {
+  padding: calc(var(--lu) * 8) calc(var(--lu) * 15);
+}
+
+.is-compact .bubble__plate {
+  margin: calc(var(--lu) * 4) 0 calc(var(--lu) * 3);
+}
