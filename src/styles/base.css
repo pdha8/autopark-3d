@@ -363,15 +363,18 @@ pre,
   gap: calc(var(--u) * 10);
 }
 
+/* logo : symbole #logo d'index.html (niveaux, pilier et rampe en perspective) */
 .brand__mark {
-  display: grid;
-  place-items: center;
-  width: calc(var(--u) * 30);
-  height: calc(var(--u) * 30);
-  border-radius: calc(var(--u) * 8);
-  background: var(--accent);
-  color: var(--on-btn);
-  font: 700 var(--t-lg) / 1 var(--font-d);
+  display: block;
+  flex: none;
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 36);
+}
+
+.logo {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .brand__name {
@@ -732,15 +735,8 @@ html[data-theme='day'] .ico--moon {
 }
 
 .loader__mark {
-  display: grid;
-  place-items: center;
-  width: calc(var(--u) * 76);
-  height: calc(var(--u) * 76);
-  border-radius: calc(var(--u) * 20);
-  background: var(--accent);
-  color: var(--on-btn);
-  font: 700 var(--t-h2) / 1 var(--font-d);
-  box-shadow: 0 0 calc(var(--u) * 24) color-mix(in srgb, var(--accent) 30%, transparent);
+  width: calc(var(--u) * 112);
+  height: calc(var(--u) * 112);
   animation: float 2.4s ease-in-out infinite;
 }
 
