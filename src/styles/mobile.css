@@ -122,11 +122,14 @@ body.is-mobile .smart-spot:nth-child(n + 3) {
   display: none;
 }
 
-/* sections de contenu : défilement interne */
+/* sections de contenu : défilement interne. Le calque .ui laisse passer le doigt (pour la
+   maquette) ; ici c'est lui qui défile : il reçoit le doigt partout, marges et espaces entre
+   panneaux compris, sinon le geste traverse et change de section au lieu de faire défiler */
 body.is-mobile .ui--wide {
   padding: calc(var(--u) * 72) calc(var(--u) * 16) calc(var(--u) * 28);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  pointer-events: auto;
 }
 
 body.is-mobile .explore__head,
@@ -443,4 +446,24 @@ body.is-compact .stats ~ .hero-copy {
 
 .is-compact .bubble__plate {
   margin: calc(var(--lu) * 4) 0 calc(var(--lu) * 3);
+}
+
+/* bulle de la caméra trop près de la barre du haut (téléphones bas, tablettes debout) :
+   version serrée sans la ligne de titre (fitSceneLabels dans main.js) */
+.bubble.is-tight {
+  padding: calc(var(--lu) * 8) calc(var(--lu) * 13);
+}
+
+.bubble.is-tight .bubble__title {
+  display: none;
+}
+
+.bubble.is-tight .bubble__plate {
+  margin: 0 0 calc(var(--lu) * 3);
+  font-size: calc(var(--lu) * 20);
+}
+
+/* pastille de plaque de l'Accueil qui tomberait sur le texte (petits téléphones) */
+.toast-anpr.is-crowded {
+  display: none;
 }

@@ -111,13 +111,25 @@ export class Sections {
     return dir > 0 ? el.scrollTop + el.clientHeight < el.scrollHeight - 2 : el.scrollTop > 2;
   }
 
+  /** Un contenu sous el, ou qui l'englobe, peut-il encore défiler dans ce sens ? Au bout d'une
+   *  liste, le geste continue dans la section qui la contient (comme le fait le navigateur),
+   *  sauf si la liste retient le défilement (overscroll-behavior). */
+  _canScrollFrom(el, dir) {
+    for (let e = el instanceof Element ? el : null; e && e !== document.body; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (!/(auto|scroll)/.test(cs.overflowY) || e.scrollHeight <= e.clientHeight + 2) continue;
+      if (Sections._canScroll(e, dir)) return true;
+      if (cs.overscrollBehaviorY !== 'auto') return false;
+    }
+    return false;
+  }
+
   _onWheel(e) {
     if (e.ctrlKey) return; // laisse le zoom du navigateur fonctionner
     if (this.locked()) return;
     const now = performance.now();
     // un contenu qui défile passe d'abord ; la section change au geste suivant, une fois au bout
-    const sc = this._scroller(e.target);
-    if (sc && e.deltaY && Sections._canScroll(sc, Math.sign(e.deltaY))) {
+    if (e.deltaY && this._canScrollFrom(e.target, Math.sign(e.deltaY))) {
       this._lastWheel = now;
       this._gestureUsed = true;
       return;
@@ -168,8 +180,7 @@ export class Sections {
       return;
     }
     // au début du geste : le contenu touché pouvait-il encore défiler ?
-    const sc = this._scroller(e.target);
-    this._touchScroll = sc ? { up: Sections._canScroll(sc, -1), down: Sections._canScroll(sc, 1) } : null;
+    this._touchScroll = { up: this._canScrollFrom(e.target, -1), down: this._canScrollFrom(e.target, 1) };
     this._touchY = e.touches[0]?.clientY ?? null;
   }
 

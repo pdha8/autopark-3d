@@ -66,8 +66,10 @@ function fit() {
   const mobile = portrait || compact;
   document.body.classList.toggle('is-mobile', mobile);
   document.body.classList.toggle('is-compact', compact);
-  // téléphone : 1 u = 1/430 de la largeur ; plafonné sur tablette (sinon tout grossit de 80 %)
-  const u = compact ? Math.min(w / 430, 1.25) : mobile ? Math.min(w / 430, 1.3) : fitU;
+  // téléphone : 1 u = 1/430 de la largeur ; plafonné sur tablette (sinon tout grossit de 80 %).
+  // Compact (téléphone couché, zoom fort) : la hauteur compte aussi, sinon la barre du haut et les
+  // titres prennent un quart de l'écran ; les planchers de texte gardent la lecture.
+  const u = compact ? Math.min(w / 430, h / 400, 1.25) : mobile ? Math.min(w / 430, 1.3) : fitU;
   root.style.setProperty('--u', `${u}px`);
   // téléphone debout : vidéos recadrées sur ce que l'écran montre (bien plus légères)
   const phone = mobile && !compact && w <= 430 * 1.3;
@@ -91,7 +93,44 @@ function fit() {
     }
   }
   sections?.resize(h);
+  fitSceneLabels();
+  // encore une fois, l'écran posé (polices, transitions en cours au chargement)
+  clearTimeout(labelsTimer);
+  labelsTimer = setTimeout(fitSceneLabels, 450);
 }
+let labelsTimer;
+
+// Étiquettes de la scène qui gêneraient la barre du haut ou le texte (petits écrans) : la bulle
+// de la caméra se resserre (sans sa ligne de titre), puis descend au plus de la longueur de sa
+// queue ; la pastille de plaque de l'Accueil s'efface si elle tombe sur le texte.
+function fitSceneLabels() {
+  const nav = $('.nav');
+  if (!nav) return;
+  const navB = nav.getBoundingClientRect().bottom;
+  const bub = $('#gate-bubble');
+  if (bub) {
+    bub.classList.remove('is-tight');
+    bub.style.removeProperty('--bdrop');
+    const sec = bub.closest('.sec');
+    const tail = (parseFloat(getComputedStyle(bub).getPropertyValue('--su')) || 1) * 22;
+    // calcul sur la mise en page, pas sur la bulle animée : son bas est à une queue au-dessus de
+    // l'ancre (top de l'élément), et elle monte de toute sa hauteur
+    const bottom = bub.offsetParent.getBoundingClientRect().top - sec.getBoundingClientRect().top + bub.offsetTop - tail;
+    const miss = () => navB + 6 - (bottom - bub.offsetHeight);
+    if (miss() > 0) bub.classList.add('is-tight');
+    const left = miss();
+    if (left > 0) bub.style.setProperty('--bdrop', `${Math.min(left, tail)}px`);
+  }
+  const toast = $('#hero-anpr');
+  const copy = $('#accueil .hero-copy');
+  if (toast && copy) {
+    toast.classList.remove('is-crowded');
+    const t = toast.getBoundingClientRect();
+    const c = copy.getBoundingClientRect();
+    if (t.bottom > c.top - 4 && t.right > c.left && t.left < c.right) toast.classList.add('is-crowded');
+  }
+}
+document.fonts?.ready.then(fitSceneLabels);
 
 // ------------------------------------------------------------ thème
 function applyTheme(next, announce = true) {

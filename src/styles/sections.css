@@ -332,7 +332,7 @@
   border: 1px solid var(--line-hi);
   background: color-mix(in srgb, var(--panel-solid) 97%, transparent);
   box-shadow: var(--shadow);
-  transform: translate(-72%, calc(-100% - var(--su) * 22)) scale(0.94);
+  transform: translate(-72%, calc(-100% - var(--su) * 22 + var(--bdrop, 0px))) scale(0.94);
   transform-origin: 72% 100%;
   opacity: 0;
   transition: opacity 0.3s, transform 0.4s var(--ease);
@@ -340,7 +340,7 @@
 
 .bubble.is-on {
   opacity: 1;
-  transform: translate(-72%, calc(-100% - var(--su) * 22)) scale(1);
+  transform: translate(-72%, calc(-100% - var(--su) * 22 + var(--bdrop, 0px))) scale(1);
 }
 
 .bubble::after {
@@ -349,7 +349,7 @@
   left: 72%;
   top: 100%;
   width: 1px;
-  height: calc(var(--su) * 22);
+  height: max(0px, calc(var(--su) * 22 - var(--bdrop, 0px)));
   background: linear-gradient(var(--line-hi), transparent);
 }
 
