@@ -53,12 +53,13 @@
 }
 
 .mode button.is-active {
-  background: linear-gradient(135deg, #2f6df2, #1d4ed8);
-  color: #fff;
+  background: linear-gradient(135deg, var(--btn-a), var(--btn-b));
+  color: var(--on-btn);
 }
 
 body.is-admin .mode button.is-active {
-  background: linear-gradient(135deg, #d99a06, #b77a04);
+  background: linear-gradient(135deg, var(--btn-admin-a), var(--btn-admin-b));
+  color: var(--on-btn-admin);
 }
 
 .explore {
@@ -515,18 +516,21 @@ body.is-admin .admin-only {
 }
 
 .types__track {
+  position: relative;
   height: calc(var(--u) * 10);
   border-radius: 99px;
   background: var(--fill);
   overflow: hidden;
-  display: flex;
 }
 
+/* segments posés en transformation : --o (début) et --f (part), de 0 à 1 (dashboard.js) */
 .types__track i {
-  display: block;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   background: var(--c);
-  transition: width 0.8s var(--ease);
+  transform-origin: left center;
+  transform: translateX(calc(var(--o, 0) * 100%)) scaleX(var(--f, 0));
+  transition: transform 0.8s var(--ease);
 }
 
 .types__track i + i {
@@ -557,20 +561,22 @@ body.is-admin .admin-only {
 }
 
 .bylevel__stack {
+  position: relative;
   flex: 1;
   width: 100%;
-  display: flex;
-  flex-direction: column-reverse;
   border-radius: calc(var(--u) * 8);
   background: var(--fill);
   overflow: hidden;
 }
 
+/* segments empilés par le bas en transformation : --o (début) et --f (part), de 0 à 1 */
 .bylevel__stack i {
-  display: block;
-  width: 100%;
+  position: absolute;
+  inset: 0;
   background: var(--c);
-  transition: height 0.8s var(--ease);
+  transform-origin: center bottom;
+  transform: translateY(calc(var(--o, 0) * -100%)) scaleY(var(--f, 0));
+  transition: transform 0.8s var(--ease);
 }
 
 .bylevel__col b {
@@ -697,16 +703,12 @@ body.is-admin .admin-only {
   margin: 0;
   padding: calc(var(--u) * 12);
   border-radius: calc(var(--u) * 10);
-  background: color-mix(in srgb, #000 55%, var(--panel-solid));
-  color: #a3e635;
+  background: var(--code-bg);
+  color: var(--code-str);
   font-size: var(--t-label);
   line-height: 1.6;
   overflow: auto;
   white-space: pre;
-}
-
-html[data-theme='day'] .response {
-  background: #0f1628;
 }
 
 .response--sm {
@@ -730,37 +732,33 @@ html[data-theme='day'] .response {
   min-height: 0;
   padding: calc(var(--u) * 10) calc(var(--u) * 12);
   border-radius: calc(var(--u) * 10);
-  background: color-mix(in srgb, #000 55%, var(--panel-solid));
+  background: var(--code-bg);
   font: 500 var(--t-label) / 1.9 var(--mono);
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--code-fg);
   overflow-y: auto;
 }
 
-html[data-theme='day'] .log {
-  background: #0f1628;
-}
-
 .log__empty {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--code-dim);
 }
 
 .log div {
   display: grid;
   grid-template-columns: auto auto 1fr auto;
   gap: calc(var(--u) * 10);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--code-rule);
 }
 
 .log time {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--code-dim);
 }
 
 .log .ok {
-  color: #4ade80;
+  color: var(--available-ink);
 }
 
 .log .err {
-  color: #f87171;
+  color: var(--occupied-ink);
 }
 
 /* blocs de code (réponse, journal, clé) : sombres dans les deux thèmes, donc encres claires */
@@ -772,6 +770,15 @@ html[data-theme='day'] .log {
   --reserved-ink: #60a5fa;
   --selected-ink: #facc15;
   --kicker: var(--cyan);
+  --code-bg: color-mix(in srgb, #000 55%, var(--panel-solid));
+  --code-fg: rgba(255, 255, 255, 0.75);
+  --code-dim: rgba(255, 255, 255, 0.62); /* heure et texte d'attente : 7:1 sur le fond du jour */
+  --code-rule: rgba(255, 255, 255, 0.05);
+  --code-str: #a3e635;
+}
+
+html[data-theme='day'] :is(.response, .log, .key) {
+  --code-bg: #0f1628;
 }
 
 .field {
@@ -817,17 +824,13 @@ html[data-theme='day'] .log {
   gap: calc(var(--u) * 10);
   padding: calc(var(--u) * 10) calc(var(--u) * 13);
   border-radius: calc(var(--u) * 9);
-  background: color-mix(in srgb, #000 55%, var(--panel-solid));
-}
-
-html[data-theme='day'] .key {
-  background: #0f1628;
+  background: var(--code-bg);
 }
 
 .key code {
   font-size: var(--t-small);
   letter-spacing: 0.08em;
-  color: #facc15;
+  color: var(--selected-ink);
 }
 
 .key .btn {
@@ -1031,9 +1034,10 @@ html[data-theme='day'] .key {
 
 .tourbar__bar i {
   display: block;
-  width: 0;
   height: 100%;
   background: var(--cyan);
+  transform-origin: left center;
+  transform: scaleX(var(--p, 0)); /* avancement de la visite, main.js */
 }
 
 /* ------------------------------------------------------------ fenêtres */

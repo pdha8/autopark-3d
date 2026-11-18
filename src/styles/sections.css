@@ -73,7 +73,7 @@
 
 .stats__bar {
   grid-column: 1 / -1;
-  display: flex;
+  position: relative;
   height: calc(var(--u) * 3);
   margin-top: calc(var(--u) * 11);
   border-radius: 99px;
@@ -81,10 +81,13 @@
   overflow: hidden;
 }
 
+/* occupé puis réservé, en transformation : --o (début) et --f (part), de 0 à 1 (overlays.js) */
 .stats__bar i {
-  display: block;
-  height: 100%;
-  transition: width 0.6s var(--ease);
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: translateX(calc(var(--o, 0) * 100%)) scaleX(var(--f, 0));
+  transition: transform 0.6s var(--ease);
 }
 
 .stats__bar .b-occ {
@@ -273,7 +276,7 @@
   height: calc(var(--lu) * 15);
   border-radius: 50%;
   background: var(--available);
-  color: #06210f;
+  color: var(--on-available);
   font-size: var(--ts-label);
 }
 
@@ -608,11 +611,12 @@
 
 .predict__bar i {
   display: block;
-  width: 0;
   height: 100%;
   border-radius: 99px;
   background: var(--pc, var(--selected));
-  transition: width 1s var(--ease);
+  transform-origin: left center;
+  transform: scaleX(var(--p, 0));
+  transition: transform 1s var(--ease);
 }
 
 .predict__sub {

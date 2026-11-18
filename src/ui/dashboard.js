@@ -80,7 +80,8 @@ export class Dashboard {
     svg.append(defs);
     for (const v of [0, 0.25, 0.5, 0.75, 1]) {
       svg.append(el('line', { class: 'grid', x1: L, x2: W - R, y1: y(v), y2: y(v) }));
-      svg.append(el('text', { x: L - 6, y: y(v) + 3, 'text-anchor': 'end' }, `${v * 100}%`));
+      // 0 % : la ligne suffit (son étiquette touchait celle de 0 h sur les grands écrans)
+      if (v > 0) svg.append(el('text', { x: L - 6, y: y(v) + 3, 'text-anchor': 'end' }, `${v * 100}%`));
     }
     for (let h = 0; h < 24; h += 3) svg.append(el('text', { x: x(h), y: H - 8, 'text-anchor': 'middle' }, `${h}h`));
     // courbe lissée (Catmull-Rom -> Bézier)
@@ -149,7 +150,7 @@ export class Dashboard {
       const t = data[key] || { total: 0, used: 0 };
       const max = Math.max(...Object.values(data).map((o) => o.total));
       const scale = key === 'std' ? 100 : Math.max(22, (100 * t.total) / max * 4);
-      return `<div class="types__row"><span>${label}</span><div class="types__track" style="--c:${color}"><i style="width:${(scale * t.used) / Math.max(1, t.total)}%"></i><i style="width:${(scale * (t.total - t.used)) / Math.max(1, t.total)}%"></i></div><b>${t.used}/${t.total}</b></div>`;
+      return `<div class="types__row"><span>${label}</span><div class="types__track" style="--c:${color}"><i style="--f:${(scale * t.used) / Math.max(1, t.total) / 100}"></i><i style="--o:${(scale * t.used) / Math.max(1, t.total) / 100};--f:${(scale * (t.total - t.used)) / Math.max(1, t.total) / 100}"></i></div><b>${t.used}/${t.total}</b></div>`;
     }).join('');
   }
 
@@ -157,8 +158,7 @@ export class Dashboard {
     $('#chart-levels').innerHTML = [0, 1, 2, 3]
       .map((lv) => {
         const c = store.counts(lv);
-        const pct = (v) => `${(100 * v) / c.total}%`;
-        return `<div class="bylevel__col"><b>${Math.round((100 * (c.occupied + c.reserved)) / c.total)} %</b><div class="bylevel__stack"><i style="--c:var(--occupied);height:${pct(c.occupied)}"></i><i style="--c:var(--reserved);height:${pct(c.reserved)}"></i></div><span>P${lv}</span></div>`;
+        return `<div class="bylevel__col"><b>${Math.round((100 * (c.occupied + c.reserved)) / c.total)} %</b><div class="bylevel__stack"><i style="--c:var(--occupied);--f:${c.occupied / c.total}"></i><i style="--c:var(--reserved);--o:${c.occupied / c.total};--f:${c.reserved / c.total}"></i></div><span>P${lv}</span></div>`;
       })
       .join('');
   }

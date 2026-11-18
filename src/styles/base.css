@@ -40,6 +40,15 @@
   --family: #fb923c;
   --accent: #2563eb;
   --accent-hi: #3b82f6;
+  /* boutons pleins : texte blanc à 7:1 au moins sur tout le dégradé, dans les deux thèmes */
+  --btn-a: #1e49c8;
+  --btn-b: #1e40af;
+  --on-btn: #fff;
+  /* bouton actif du mode administrateur : ambre clair et texte foncé (7:1) */
+  --btn-admin-a: #f0b429;
+  --btn-admin-b: #d99a06;
+  --on-btn-admin: #1f1300;
+  --on-available: #06210f; /* coche sur pastille verte */
   --cyan: #64c8ff;
   --focus: var(--cyan); /* contour du focus clavier (le jour : bleu de la marque, 4,5:1) */
   --font-d: 'Barlow Condensed', 'Arial Narrow', sans-serif;
@@ -198,8 +207,8 @@ pre,
   top: calc(var(--u) * 12);
   padding: calc(var(--u) * 10) calc(var(--u) * 16);
   border-radius: calc(var(--u) * 10);
-  background: var(--accent);
-  color: #fff;
+  background: var(--btn-a);
+  color: var(--on-btn);
   font-size: var(--t-small);
   font-weight: 700;
   transform: translateY(-200%);
@@ -361,7 +370,7 @@ pre,
   height: calc(var(--u) * 30);
   border-radius: calc(var(--u) * 8);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-btn);
   font: 700 var(--t-lg) / 1 var(--font-d);
 }
 
@@ -479,14 +488,14 @@ html[data-theme='day'] .ico--moon {
 }
 
 .btn--primary {
-  background: linear-gradient(135deg, #2f6df2, #1d4ed8);
-  color: #fff;
-  box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 10) rgba(37, 99, 235, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, var(--btn-a), var(--btn-b));
+  color: var(--on-btn);
+  box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 10) color-mix(in srgb, var(--btn-a) 24%, transparent), inset 0 1px 0 color-mix(in srgb, var(--on-btn) 14%, transparent);
 }
 
 .btn--primary:hover {
   transform: translateY(calc(var(--u) * -1.5));
-  box-shadow: 0 calc(var(--u) * 5) calc(var(--u) * 14) rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: 0 calc(var(--u) * 5) calc(var(--u) * 14) color-mix(in srgb, var(--btn-a) 32%, transparent), inset 0 1px 0 color-mix(in srgb, var(--on-btn) 18%, transparent);
 }
 
 .btn--ghost,
@@ -729,9 +738,9 @@ html[data-theme='day'] .ico--moon {
   height: calc(var(--u) * 76);
   border-radius: calc(var(--u) * 20);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-btn);
   font: 700 var(--t-h2) / 1 var(--font-d);
-  box-shadow: 0 0 calc(var(--u) * 24) rgba(37, 99, 235, 0.3);
+  box-shadow: 0 0 calc(var(--u) * 24) color-mix(in srgb, var(--accent) 30%, transparent);
   animation: float 2.4s ease-in-out infinite;
 }
 
@@ -757,11 +766,13 @@ html[data-theme='day'] .ico--moon {
 
 .loader__bar i {
   display: block;
-  width: 0;
   height: 100%;
   border-radius: 99px;
   background: var(--cyan);
-  transition: width 0.3s;
+  /* avancement en transformation (pas de recalcul de mise en page) : --p de 0 à 1, main.js */
+  transform-origin: left center;
+  transform: scaleX(var(--p, 0));
+  transition: transform 0.3s;
 }
 
 .loader__pct {

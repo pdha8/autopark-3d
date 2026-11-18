@@ -311,6 +311,11 @@ body.is-compact .stats ~ .hero-copy {
     grid-column: 1 / -1;
   }
 
+  /* dernière rangée : le graphique seul prend toute la largeur (pas de case vide) */
+  body.is-mobile .charts .chart:last-child {
+    grid-column: 1 / -1;
+  }
+
   body.is-mobile .modal__box,
   body.is-mobile .modal__box--wide {
     max-width: 34rem;
@@ -339,6 +344,7 @@ body.is-compact .stats ~ .hero-copy {
   .levels button,
   .tabs button,
   .results button,
+  .smart-spot,
   .durations button,
   .checks label {
     min-height: 44px;
@@ -466,4 +472,43 @@ body.is-compact .stats ~ .hero-copy {
 /* pastille de plaque de l'Accueil qui tomberait sur le texte (petits téléphones) */
 .toast-anpr.is-crowded {
   display: none;
+}
+
+/* téléphone couché : les niveaux P0-P3 sont empilés de près ; boîtes plus basses, sans chevauchement */
+body.is-compact .tag--level {
+  line-height: 1;
+  padding-block: calc(var(--lu) * 1);
+}
+
+/* écran tactile bas en mise en page d'ordinateur (petite tablette couchée) : les commandes de
+   44 px poussent la ligne de crédit de l'API hors de l'écran ; elle s'efface */
+@media (pointer: coarse) and (max-height: 640px) {
+  body:not(.is-mobile) .credit {
+    display: none;
+  }
+}
+
+/* souris : la barre du haut offre une zone de clic de 44 px de haut, sans changer son dessin */
+@media (pointer: fine) {
+  .nav .brand,
+  .nav__links a,
+  .nav .pill,
+  .nav .iconbtn,
+  .nav .btn {
+    position: relative;
+  }
+
+  .nav .brand::after,
+  .nav__links a::after,
+  .nav .pill::after,
+  .nav .iconbtn::after,
+  .nav .btn::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
 }

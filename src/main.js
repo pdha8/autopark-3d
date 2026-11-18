@@ -85,8 +85,10 @@ function fit() {
       sc.style.setProperty('--sy', `${top / 2}px`);
     } else {
       const [fx, fy, span, py] = MOBILE_FOCUS[name];
-      // plafonné comme le texte : sur tablette on voit plus de décor autour du sujet, sans zoomer
-      const su = Math.min(w, 430 * 1.3) / span;
+      // plafonné : sur tablette on voit plus de décor autour du sujet, et la maquette occupe
+      // l'écran sans grossir comme un téléphone géant. L'Entrée garde 1,3 : sa bulle doit tenir
+      // sous la barre du haut.
+      const su = Math.min(w, 430 * (name === 'gate' ? 1.3 : 1.6)) / span;
       sc.style.setProperty('--su', `${su}px`);
       sc.style.setProperty('--sx', `${-(fx - 640) * su}px`);
       sc.style.setProperty('--sy', `${h * py - h / 2 - (fy - 388) * su}px`);
@@ -100,6 +102,32 @@ function fit() {
 }
 let labelsTimer;
 
+// Clavier du téléphone : sur un navigateur qui rétrécit la page quand il s'ouvre, seule la hauteur
+// change pendant une saisie. On garde alors la mise en page (sinon elle bascule et la vidéo se
+// recharge) ; elle est refaite à la fermeture du clavier, ou quand le champ perd le focus.
+let lastW = window.innerWidth;
+let lastH = window.innerHeight;
+let fitPending = false;
+const typing = () => {
+  const a = document.activeElement;
+  return !!a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable);
+};
+function onResize() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  if (w === lastW && h < lastH && typing()) {
+    fitPending = true;
+    return;
+  }
+  lastW = w;
+  lastH = h;
+  fitPending = false;
+  fit();
+}
+document.addEventListener('focusout', () => {
+  if (fitPending) setTimeout(() => fitPending && !typing() && onResize(), 350);
+});
+
 // Étiquettes de la scène qui gêneraient la barre du haut ou le texte (petits écrans) : la bulle
 // de la caméra se resserre (sans sa ligne de titre), puis descend au plus de la longueur de sa
 // queue ; la pastille de plaque de l'Accueil s'efface si elle tombe sur le texte.
@@ -111,6 +139,9 @@ function fitSceneLabels() {
   if (bub) {
     bub.classList.remove('is-tight');
     bub.style.removeProperty('--bdrop');
+  }
+  // ordinateur : la bulle garde son dessin d'origine ; ce réglage sert aux petits écrans
+  if (bub && document.body.classList.contains('is-mobile')) {
     const sec = bub.closest('.sec');
     const tail = (parseFloat(getComputedStyle(bub).getPropertyValue('--su')) || 1) * 22;
     // calcul sur la mise en page, pas sur la bulle animée : son bas est à une queue au-dessus de
@@ -295,7 +326,7 @@ function tourTick(dt) {
   if (!tour.on || sections.animating) return;
   tour.t += dt;
   const dur = TOUR[tour.step][2];
-  $('#tour-progress').style.width = `${Math.min(100, (100 * tour.t) / dur)}%`;
+  $('#tour-progress').style.setProperty('--p', Math.min(1, tour.t / dur));
   if (tour.t < dur) return;
   if (tour.step + 1 < TOUR.length) tourStep(tour.step + 1);
   else tourStop(true);
@@ -382,7 +413,7 @@ function bind() {
     explorer.select(null);
     notify('Système réinitialisé');
   });
-  window.addEventListener('resize', fit);
+  window.addEventListener('resize', onResize);
 }
 
 // léger déplacement de la scène 3D avec le pointeur (effet de profondeur, ordinateur seulement)
@@ -444,7 +475,7 @@ async function boot() {
   const bar = $('#loader-bar');
   const pct = $('#loader-pct');
   const progress = (p) => {
-    bar.style.width = `${Math.round(p * 100)}%`;
+    bar.style.setProperty('--p', p);
     pct.textContent = `${Math.round(p * 100)} %`;
   };
   // au plus 12 s d'attente : ensuite on démarre quand même (connexion lente, lecture bloquée)

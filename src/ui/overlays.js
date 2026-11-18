@@ -109,8 +109,9 @@ export class HeroOverlay {
       el.textContent = c[key];
       this.shown[key] = c[key];
     }
-    this.barOcc.style.width = `${(100 * c.occupied) / c.total}%`;
-    this.barRes.style.width = `${(100 * c.reserved) / c.total}%`;
+    this.barOcc.style.setProperty('--f', c.occupied / c.total);
+    this.barRes.style.setProperty('--o', c.occupied / c.total);
+    this.barRes.style.setProperty('--f', c.reserved / c.total);
     setChip(this.chip, this.chipState, bayState(HERO_BAY, t));
     // plaque lue à l'entrée : celle du véhicule qui passe la barrière
     const { entry, age } = lastEntry(t);
@@ -237,7 +238,7 @@ export class RoofOverlay {
     box.style.setProperty('--pc', `var(--${tone})`); // barre : couleur vive
     box.style.setProperty('--pci', `var(--${tone}-ink)`); // texte : encre (foncée le jour)
     $('#pred-value').textContent = `${p1} %`;
-    $('#pred-bar').style.width = `${p1}%`;
+    $('#pred-bar').style.setProperty('--p', p1 / 100);
     $('#pred-sub').textContent = `${trend} · dans 2 h : ${p2} %`;
   }
 }
